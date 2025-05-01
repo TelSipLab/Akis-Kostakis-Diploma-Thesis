@@ -1,6 +1,5 @@
 #include "ComplementaryFilter.hpp"
 
-#include "pch.h"
 
 void ComplementaryFilter::calculateRoll() {
     phiG(0) = gyroData(0, 0) * dt;
