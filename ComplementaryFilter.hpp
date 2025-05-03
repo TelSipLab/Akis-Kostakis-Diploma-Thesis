@@ -7,9 +7,9 @@ class ComplementaryFilter {
 public:
     ComplementaryFilter() = default;
     ~ComplementaryFilter() = default;
-    
 
-    void calculateRoll();
+    ComplementaryFilter(double alphaC, double dt);
+
     void setAccelData(const Eigen::MatrixXd& data);
     void setGyroData(const Eigen::MatrixXd& data);
 
@@ -21,9 +21,11 @@ public:
         return roll;
     }
 
+    void calculateRoll();
 private:
-    const double dt{ 0.02 };
-    double alphaCoeff{ 0.1 };
+    // Some default values
+    double dt{ 0.02 };
+    double alphaCoeff{ 0.9 };
 
     Eigen::MatrixXd accelometerData;
     Eigen::MatrixXd gyroData;

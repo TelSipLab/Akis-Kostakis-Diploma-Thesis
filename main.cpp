@@ -18,13 +18,14 @@ int main()
     anglesResults.read();
     anglesResults.printStats();
 
-    ComplementaryFilter filter;
+    ComplementaryFilter filter(0.8, 0.02);
     filter.setGyroData(gyroData.getEigenData());
     filter.setAccelData(accelData.getEigenData());
     filter.calculateRoll();
 
     auto& roll = filter.getRoll(); // Results are in RAD
     Utils::convertToDeg(roll); // Now results are in Degree
+    Utils::printVec(roll);
 
     // File contains RAD
     Eigen::VectorXd rollTruthVector = Utils::getVectorFromMatrix(anglesResults.getEigenData(), 0);
