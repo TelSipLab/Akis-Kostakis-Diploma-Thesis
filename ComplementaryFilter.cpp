@@ -10,6 +10,8 @@ ComplementaryFilter::ComplementaryFilter(double alphaC, double dtarg) {
 
 void ComplementaryFilter::setAccelData(const Eigen::MatrixXd& data) {
     accelometerData = data;
+
+    // TODO move these out of here
     phiA.resize(data.rows());
     phiA.setZero();
 }
@@ -48,7 +50,7 @@ void ComplementaryFilter::calculate() {
         thetaG(i) = pitch(i - 1) + gyroData(i,1) * dt;
 
         phiA(i) = std::atan2(ay, az);
-        thetaA(i) = std::atan2(ax, std::sqrt(ay * ay + az * az));
+        thetaA(i) = std::atan2(ax, std::sqrt((ay * ay) + (az * az)));
         
         double rollResult = alphaCoeff * phiG(i) + (1 - alphaCoeff) * phiA(i);
         double pitchResult = alphaCoeff * thetaG(i) + (1 - alphaCoeff) * thetaA(i);

@@ -3,8 +3,6 @@
 
 #include "pch.h"
 
-#include <Eigen/src/Core/Matrix.h>
-
 class ComplementaryFilter {
 public:
     ComplementaryFilter() = default;
