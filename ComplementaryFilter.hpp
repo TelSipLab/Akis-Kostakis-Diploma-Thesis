@@ -3,13 +3,15 @@
 
 #include "pch.h"
 
+#include <Eigen/src/Core/Matrix.h>
+
 class ComplementaryFilter {
 public:
     ComplementaryFilter() = default;
     ~ComplementaryFilter() = default;
-    
 
-    void calculateRoll();
+    ComplementaryFilter(double alphaC, double dt);
+
     void setAccelData(const Eigen::MatrixXd& data);
     void setGyroData(const Eigen::MatrixXd& data);
 
@@ -21,16 +23,27 @@ public:
         return roll;
     }
 
+    inline Eigen::VectorXd& getPitch() {
+        return pitch;
+    }
+
+    void calculate();
 private:
-    const double dt{ 0.02 };
-    double alphaCoeff{ 0.1 };
+    // Some default values
+    double dt{ 0.02 };
+    double alphaCoeff{ 0.9 };
 
     Eigen::MatrixXd accelometerData;
     Eigen::MatrixXd gyroData;
 
     Eigen::VectorXd phiG;
     Eigen::VectorXd phiA;
+    Eigen::VectorXd thetaG;
+    Eigen::VectorXd thetaA;
+
+    // Predictions
     Eigen::VectorXd roll;
+    Eigen::VectorXd pitch;
 };
 
 #endif // COMPLEMENTARY_FILTER_HPP

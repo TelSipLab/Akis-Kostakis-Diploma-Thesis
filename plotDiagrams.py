@@ -2,8 +2,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Define file names
-file1 = 'Results/roll.txt'
+file1 = 'Results/predicted_roll.txt'
 file2 = 'Results/expected_roll.txt'
+
+rmse = 0.81 # either by cpp code or we can calculate from python
 
 # Read data from files
 data1 = np.loadtxt(file1)
@@ -22,7 +24,7 @@ plt.legend()
 plt.grid(True)
 
 # Display RMSE on the plot
-plt.text(0.05, 0.95, f'RMSE: 1.8',
+plt.text(0.05, 0.95, f'RMSE: {rmse}',
          transform=plt.gca().transAxes,  # use axes coordinates
          fontsize=12, color='black', verticalalignment='top')
 
