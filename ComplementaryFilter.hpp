@@ -3,6 +3,8 @@
 
 #include "pch.h"
 
+#include <Eigen/src/Core/Matrix.h>
+
 class ComplementaryFilter {
 public:
     ComplementaryFilter() = default;
@@ -21,7 +23,11 @@ public:
         return roll;
     }
 
-    void calculateRoll();
+    inline Eigen::VectorXd& getPitch() {
+        return pitch;
+    }
+
+    void calculate();
 private:
     // Some default values
     double dt{ 0.02 };
@@ -32,7 +38,12 @@ private:
 
     Eigen::VectorXd phiG;
     Eigen::VectorXd phiA;
+    Eigen::VectorXd thetaG;
+    Eigen::VectorXd thetaA;
+
+    // Predictions
     Eigen::VectorXd roll;
+    Eigen::VectorXd pitch;
 };
 
 #endif // COMPLEMENTARY_FILTER_HPP
