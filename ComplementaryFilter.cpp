@@ -70,7 +70,7 @@ void ComplementaryFilter::calculatePitch() {
         double squareData = (ay*ay) + (az*az);
 
         thetaG(i) = pitch(i-1) + gyroData(i, 1) * dt;
-        thetaA(i) = std::atan2(ax, std::sqrt(squareData));
+        thetaA(i) = std::atan2(ax, std::sqrt(squareData)); // TODO NOTICE
 
         double pitchResult = alphaCoeff*thetaG(i) + diffConst * thetaA(i);
         pitch(i) = pitchResult;
