@@ -25,7 +25,8 @@ public:
         return pitch;
     }
 
-    void calculate();
+    void calculateRoll();
+    void calculatePitch();
 private:
     // Some default values
     double dt{ 0.02 };

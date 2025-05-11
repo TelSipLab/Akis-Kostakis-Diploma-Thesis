@@ -23,7 +23,8 @@ int main()
     ComplementaryFilter filter(alpha, dt);
     filter.setGyroData(gyroData.getEigenData());
     filter.setAccelData(accelData.getEigenData());
-    filter.calculate();
+    filter.calculateRoll();
+    filter.calculatePitch();
 
     auto& roll = filter.getRoll(); // Results are in RAD
     Utils::convertToDeg(roll); // Now results are in Degree
@@ -49,5 +50,8 @@ int main()
     Utils::printVecToFile(roll, "Results/predicted_roll.txt");
     Utils::printVecToFile(rollTruthVector, "Results/expected_roll.txt");
 
+    Utils::printVecToFile(pitch, "Results/predicted_pitch.txt");
+    Utils::printVecToFile(pitchTruthVector, "Results/expected_pitch.txt");
+    
     return 0;
 }
