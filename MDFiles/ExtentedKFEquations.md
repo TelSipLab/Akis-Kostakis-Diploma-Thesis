@@ -88,20 +88,6 @@ $$
 
 ***
 
-### Common Simplification
-
-In many practical implementations (including quaternion EKF), $W_k = I$ and $V_k = I$, simplifying to:
-
-$$
-P^-_k = A_k P_{k-1} A_k^T + Q
-$$
-
-$$
-K_k = P^-_k H_k^T \left( H_k P^-_k H_k^T + R \right)^{-1}
-$$
-
-***
-
 ### EKF Process Description
 
 - **Prediction step** uses the system's nonlinear model to forecast the next state and its uncertainty, employing appropriate linearizations via the Jacobian matrices.
