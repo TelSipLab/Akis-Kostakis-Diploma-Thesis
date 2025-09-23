@@ -1,22 +1,24 @@
-#include <iostream>
 #include <Eigen/Dense>
 #include <cmath>
+#include <iostream>
 
 using namespace Eigen;
 using namespace std;
 
 // Simple function: f(x) = [x1^2 + x2, sin(x1), x1*x2]
-Vector3d simpleFunction(const Vector2d& x) {
+Vector3d simpleFunction(const Vector2d &x)
+{
     Vector3d result;
-    result(0) = x(0)*x(0) + x(1);      // x1^2 + x2
-    result(1) = sin(x(0));             // sin(x1)
-    result(2) = x(0) * x(1);           // x1 * x2
+    result(0) = x(0) * x(0) + x(1); // x1^2 + x2
+    result(1) = sin(x(0));          // sin(x1)
+    result(2) = x(0) * x(1);        // x1 * x2
     return result;
 }
 
 // Analytical Jacobian of f(x) with respect to x
 // J = [∂f/∂x1  ∂f/∂x2]
-MatrixXd analyticalJacobian(const Vector2d& x) {
+MatrixXd analyticalJacobian(const Vector2d &x)
+{
     MatrixXd J(3, 2);
 
     // Row 1: ∂(x1^2 + x2)/∂x = [2*x1, 1]
@@ -35,11 +37,13 @@ MatrixXd analyticalJacobian(const Vector2d& x) {
 }
 
 // Numerical Jacobian using finite differences
-MatrixXd numericalJacobian(const Vector2d& x, double epsilon = 1e-6) {
+MatrixXd numericalJacobian(const Vector2d &x, double epsilon = 1e-6)
+{
     MatrixXd J(3, 2);
     Vector3d f_x = simpleFunction(x);
 
-    for (int j = 0; j < 2; ++j) {
+    for(int j = 0; j < 2; ++j)
+    {
         Vector2d x_plus = x;
         x_plus(j) += epsilon;
         Vector3d f_plus = simpleFunction(x_plus);
@@ -55,7 +59,8 @@ MatrixXd numericalJacobian(const Vector2d& x, double epsilon = 1e-6) {
     return J;
 }
 
-int main() {
+int main()
+{
     // Test point
     Vector2d x(1.5, 2.0);
 

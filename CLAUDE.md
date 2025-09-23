@@ -6,8 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is an ongoing C++ diploma thesis project for attitude estimation using IMU data. Currently implements complementary filter algorithms, with plans to extend to Kalman filtering approaches.
 
-**Current Status**: Complementary filter implementation complete. Research phase completed - all relevant EKF papers have been read.
-**Next Phase**: Implement quaternion-based Extended Kalman Filter (EKF) for orientation estimation using inertial and magnetic sensing (reference: "Quaternion-based_extended_Kalman_filter_for_determining_orientation_by_inertial_and_magnetic_sensing" paper). Awaiting professor consultation for implementation approach.
+**Current Status**: Complementary filter implementation complete. Research phase completed - all relevant EKF papers have been read. **EKF implementation in progress** - foundation complete with 7D state vector design.
+**Next Phase**: Complete quaternion-based Extended Kalman Filter (EKF) implementation. Foundation established: constructor, quaternion utilities, and mathematical framework ready. Next steps: implement predict() function with quaternion kinematics and measurement update.
 
 ## Build System
 
@@ -34,6 +34,11 @@ cmake --build build --target run
 - **ComplementaryFilter**: Main algorithm implementation that fuses gyroscope and accelerometer data
   - `ComplementaryFilter.hpp/cpp`: Filter class with configurable alpha coefficient and sampling rate
   - Calculates roll and pitch using complementary filtering technique
+
+- **ExtendedKalmanFilter**: Quaternion-based EKF implementation (in progress)
+  - `ExtendedKalmanFilter.hpp/cpp`: 7D state vector EKF (quaternion + gyro bias estimation)
+  - Foundation complete: constructor, quaternion utilities, mathematical framework
+  - Pending: predict() function, measurement update, Jacobian computations
 
 - **CsvReader**: Data input handler for CSV files containing sensor data
   - `csvreader.hpp`: Template-based CSV parser that converts data to Eigen matrices
@@ -72,6 +77,12 @@ cmake --build build --target run
 - `pch.h`: Precompiled header with common includes (Eigen, iostream, etc.)
 - `plotDiagrams.py`: Visualization script for comparing predicted vs expected results
 - `compile_commands.json`: Generated compilation database for IDE support
+
+### EKF Implementation Files
+- `ExtendedKalmanFilter.hpp/cpp`: Core EKF implementation (7D state: quaternion + bias)
+- `jacobian.cpp`: Standalone example demonstrating Jacobian computation with Eigen
+- `MDFiles/KalmanEquations.md`: Standard linear Kalman filter equations reference
+- `MDFiles/EKFDescriptionEquation.md`: Extended Kalman filter equations with mathematical derivations
 
 The project expects Data/ directory with sensor CSV files and creates Results/ directory for output files.
 ## Research Materials
