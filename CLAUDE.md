@@ -6,8 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is an ongoing C++ diploma thesis project for attitude estimation using IMU data. Currently implements complementary filter algorithms, with plans to extend to Kalman filtering approaches.
 
-**Current Status**: Complementary filter implementation complete. Research phase completed - all relevant EKF papers have been read. **EKF implementation in progress** - foundation complete with 7D state vector design.
-**Next Phase**: Complete quaternion-based Extended Kalman Filter (EKF) implementation. Foundation established: constructor, quaternion utilities, and mathematical framework ready. Next steps: implement predict() function with quaternion kinematics and measurement update.
+**Current Status**: Complementary filter implementation complete. Research phase completed - all relevant EKF papers have been read. **EKF implementation in progress** - predict() function and state transition Jacobian complete.
+**Next Phase**: Complete quaternion-based Extended Kalman Filter (EKF) implementation. Completed: constructor, quaternion utilities, predict() function with quaternion kinematics. Next steps: implement update() function with measurement Jacobian and processAllData() loop.
 
 ## Data
 Data/gyro.csv contains gyroscope measurements from the IMU. 3-axes 1 column per axe (x,y,z). Values are rad/sec
@@ -44,8 +44,8 @@ cmake --build build --target run
 
 - **ExtendedKalmanFilter**: Quaternion-based EKF implementation (in progress)
   - `ExtendedKalmanFilter.hpp/cpp`: 7D state vector EKF (quaternion + gyro bias estimation)
-  - Foundation complete: constructor, quaternion utilities, mathematical framework
-  - Pending: predict() function, measurement update, Jacobian computations
+  - Completed: constructor, quaternion utilities, predict() function, state transition Jacobian
+  - Pending: update() function, measurement Jacobian, processAllData() loop
 
 - **CsvReader**: Data input handler for CSV files containing sensor data
   - `csvreader.hpp`: Template-based CSV parser that converts data to Eigen matrices
@@ -86,10 +86,11 @@ cmake --build build --target run
 - `compile_commands.json`: Generated compilation database for IDE support
 
 ### EKF Implementation Files
-- `ExtendedKalmanFilter.hpp/cpp`: Core EKF implementation (7D state: quaternion + bias)
-- `jacobian.cpp`: Standalone example demonstrating Jacobian computation with Eigen
-- `MDFiles/KalmanEquations.md`: Standard linear Kalman filter equations reference
-- `MDFiles/EKFDescriptionEquation.md`: Extended Kalman filter equations with mathematical derivations
+- `src/ExtendedKalmanFilter.cpp` & `include/ExtendedKalmanFilter.hpp`: Core EKF implementation (7D state: quaternion + bias)
+- `src/jacobian.cpp`: Standalone example demonstrating Jacobian computation with Eigen
+- `MDFiles/KalmanFilterEquations.md`: Standard linear Kalman filter equations reference
+- `MDFiles/ExtentedKFEquations.md`: Extended Kalman filter equations with mathematical derivations
+- `MDFiles/impl.md`: Detailed EKF implementation architecture and algorithm flow
 
 The project expects Data/ directory with sensor CSV files and creates Results/ directory for output files.
 ## Research Materials

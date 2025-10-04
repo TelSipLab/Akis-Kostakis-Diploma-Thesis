@@ -168,3 +168,98 @@ Eigen::MatrixXd ExtendedKalmanFilter::getStateTransitionJacobian(const Eigen::Ve
 
     return F;
 }
+
+void ExtendedKalmanFilter::update(const Eigen::Vector3d &accelReading)
+{
+    // Step 1: Correct accelerometer sign (sensor X-axis is inverted)
+    // Same issue as in ComplementaryFilter - ax should be negated
+    Eigen::Vector3d accelCorrected = accelReading;
+    accelCorrected(0) = -accelCorrected(0);  // Negate ax
+
+    // Normalize accelerometer reading (get gravity direction)
+    double accelMagnitude = accelCorrected.norm();
+    Eigen::Vector3d a_norm = accelCorrected / accelMagnitude;
+
+    // Step 2: Predicted measurement - gravity direction in body frame
+    // Get current quaternion
+    Eigen::Vector4d q = state.segment<4>(0);
+
+    // Convert quaternion to rotation matrix
+    Eigen::Matrix3d R = quaternionToRotationMatrix(q);
+
+    // Gravity in world frame: [0, 0, -1] pointing down (what accelerometer measures at rest)
+    // When body is upright, accelerometer measures [0, 0, -g] (pointing down)
+    // So we predict: R^T * [0, 0, -1] and compare with normalized accel
+    Eigen::Vector3d g_world(0.0, 0.0, -1.0);
+
+    // Rotate gravity from world to body frame: z_predicted = R^T * g_world
+    Eigen::Vector3d z_predicted = R.transpose() * g_world;
+
+    // Step 3: Innovation (measurement residual)
+    Eigen::Vector3d innovation = a_norm - z_predicted;
+
+    // Step 4: Compute Measurement Jacobian H (3x7)
+    Eigen::MatrixXd H = getMeasurementJacobian();
+
+    // Step 5: Innovation covariance S = H*P*H^T + R
+    Eigen::Matrix3d S = H * covariance * H.transpose() + measurementNoise;
+
+    // Step 6: Kalman gain K = P*H^T*S^(-1)
+    Eigen::MatrixXd K = covariance * H.transpose() * S.inverse();
+
+    // Step 7: Update state: x = x + K*innovation
+    state = state + K * innovation;
+
+    // Step 8: Normalize quaternion to maintain unit norm
+    Eigen::Vector4d q_updated = state.segment<4>(0);
+    q_updated = normalizeQuaternion(q_updated);
+    state.segment<4>(0) = q_updated;
+
+    // Step 9: Update covariance: P = (I - K*H)*P
+    Eigen::MatrixXd I = Eigen::MatrixXd::Identity(7, 7);
+    covariance = (I - K * H) * covariance;
+}
+
+Eigen::MatrixXd ExtendedKalmanFilter::getMeasurementJacobian()
+{
+    // Measurement Jacobian H (3x7)
+    // H = [ ∂h/∂q   ∂h/∂b ]
+    //     (3x4)    (3x3)
+
+    Eigen::MatrixXd H = Eigen::MatrixXd::Zero(3, 7);
+
+    // Get current quaternion
+    Eigen::Vector4d q = state.segment<4>(0);
+    double q0 = q(0), q1 = q(1), q2 = q(2), q3 = q(3);
+
+    // Gravity in world frame (pointing down)
+    Eigen::Vector3d g_world(0.0, 0.0, -1.0);
+
+    // ∂h/∂q: Derivative of (R^T * g_world) with respect to quaternion (3x4)
+    // This comes from differentiating the rotation matrix w.r.t quaternion components
+
+    // ∂h/∂q0
+    H(0, 0) = 2.0 * (q2 * g_world(0) - q1 * g_world(1));
+    H(1, 0) = 2.0 * (q3 * g_world(0) - q0 * g_world(1) - 2.0 * q1 * g_world(2));
+    H(2, 0) = 2.0 * (-q0 * g_world(0) - q3 * g_world(1));
+
+    // ∂h/∂q1
+    H(0, 1) = 2.0 * (q3 * g_world(0) + 2.0 * q1 * g_world(1) + q0 * g_world(2));
+    H(1, 1) = 2.0 * (q2 * g_world(0) - q1 * g_world(1));
+    H(2, 1) = 2.0 * (q1 * g_world(0) - q2 * g_world(1));
+
+    // ∂h/∂q2
+    H(0, 2) = 2.0 * (q0 * g_world(0) + 2.0 * q2 * g_world(1) - q3 * g_world(2));
+    H(1, 2) = 2.0 * (q1 * g_world(0) + q2 * g_world(1));
+    H(2, 2) = 2.0 * (-q2 * g_world(0) + q1 * g_world(1));
+
+    // ∂h/∂q3
+    H(0, 3) = 2.0 * (q1 * g_world(0) - q2 * g_world(2));
+    H(1, 3) = 2.0 * (q0 * g_world(0) + 2.0 * q3 * g_world(1) + q1 * g_world(2));
+    H(2, 3) = 2.0 * (q3 * g_world(0) - q0 * g_world(1));
+
+    // ∂h/∂b: Zero (3x3) - measurement independent of gyro bias
+    // Already zero from initialization
+
+    return H;
+}

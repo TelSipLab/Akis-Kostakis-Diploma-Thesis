@@ -22,9 +22,19 @@ class ExtendedKalmanFilter
 
   private:
     // EKF matrices - 7D state: [q0, q1, q2, q3, bx, by, bz]
+    // What we are trying to estimate
+    // bx,by,bz GYRO bias
     Eigen::VectorXd state;            // State vector: quaternion + gyro bias
+    
+    
+    // How uncertain we are for our prediction
     Eigen::MatrixXd covariance;       // State covariance P (7x7)
+
+
+    // Random noise
     Eigen::MatrixXd processNoise;     // Q matrix (7x7)
+
+    // Noise of the 
     Eigen::Matrix3d measurementNoise; // R matrix (3x3)
 
     // Data
