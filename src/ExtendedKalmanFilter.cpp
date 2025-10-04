@@ -21,7 +21,7 @@ ExtendedKalmanFilter::ExtendedKalmanFilter(double dt, const Eigen::Vector4d &ini
 
     // Initialize process noise (7x7)
     processNoise = Eigen::MatrixXd::Zero(7, 7);
-    processNoise.block<4, 4>(0, 0) = 0.001 * Eigen::Matrix4d::Identity();  // Quaternion noise
+    processNoise.block<4, 4>(0, 0) = 0.01 * Eigen::Matrix4d::Identity();  // Quaternion noise
     processNoise.block<3, 3>(4, 4) = 0.0001 * Eigen::Matrix3d::Identity(); // Bias noise
 
     // Initialize measurement noise (3x3) - accelerometer noise
@@ -174,7 +174,7 @@ void ExtendedKalmanFilter::update(const Eigen::Vector3d &accelReading)
     // Step 1: Correct accelerometer sign (sensor X-axis is inverted)
     // Same issue as in ComplementaryFilter - ax should be negated
     Eigen::Vector3d accelCorrected = accelReading;
-    accelCorrected(0) = -accelCorrected(0);  // Negate ax
+    accelCorrected(0) = accelCorrected(0);  // Negate ax
 
     // Normalize accelerometer reading (get gravity direction)
     double accelMagnitude = accelCorrected.norm();
@@ -261,5 +261,5 @@ Eigen::MatrixXd ExtendedKalmanFilter::getMeasurementJacobian()
     // ∂h/∂b: Zero (3x3) - measurement independent of gyro bias
     // Already zero from initialization
 
-    return -H;
+    return H;
 }
