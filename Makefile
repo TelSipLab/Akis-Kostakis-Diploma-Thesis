@@ -1,17 +1,18 @@
 CXX_STANDARD = c++14
+INCLUDES = -Iinclude
+SRC_DIR = src
+BUILD_DIR = build
 
-all: precompile main
+SOURCES = $(wildcard $(SRC_DIR)/*.cpp) main.cpp
+OBJECTS = $(SOURCES:.cpp=.o)
 
-main: precompile
-	g++ *.cpp -std=$(CXX_STANDARD) -o main.out -g
+all: main
+
+main: $(SOURCES)
+	g++ $(SOURCES) $(INCLUDES) -std=$(CXX_STANDARD) -o main.out -g
 
 run: main
 	./main.out
 
-precompile: pch.h.gch
-
-pch.h.gch: pch.h
-	g++ -x c++-header pch.h -o pch.h.gch
-
 clean:
-	rm -f main.out pch.h.gch
+	rm -f main.out $(SRC_DIR)/*.o *.o

@@ -9,6 +9,13 @@ This is an ongoing C++ diploma thesis project for attitude estimation using IMU 
 **Current Status**: Complementary filter implementation complete. Research phase completed - all relevant EKF papers have been read. **EKF implementation in progress** - foundation complete with 7D state vector design.
 **Next Phase**: Complete quaternion-based Extended Kalman Filter (EKF) implementation. Foundation established: constructor, quaternion utilities, and mathematical framework ready. Next steps: implement predict() function with quaternion kinematics and measurement update.
 
+## Data
+Data/gyro.csv contains gyroscope measurements from the IMU. 3-axes 1 column per axe (x,y,z). Values are rad/sec
+Data/accel.csv contains acceleration measuremnets from the IMU. 3-axes 1 column per axe (x,y,z). Values are m/sec^/2
+
+Angles.csv contains the actual roll and pitch values during the time of the test, these are the truth data. First column is roll (phi) and
+second column is pitch (theta). Values are rad/sec
+
 ## Build System
 
 The project supports both Make and CMake build systems:
