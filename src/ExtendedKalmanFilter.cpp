@@ -193,7 +193,7 @@ void ExtendedKalmanFilter::update(const Eigen::Vector3d &accelReading)
     Eigen::Vector3d g_world(0.0, 0.0, -1.0);
 
     // Rotate gravity from world to body frame: z_predicted = R^T * g_world
-    Eigen::Vector3d z_predicted = R.transpose() * g_world;
+    Eigen::Vector3d z_predicted = -R.transpose() * g_world;
 
     // Step 3: Innovation (measurement residual)
     Eigen::Vector3d innovation = a_norm - z_predicted;
@@ -261,5 +261,5 @@ Eigen::MatrixXd ExtendedKalmanFilter::getMeasurementJacobian()
     // ∂h/∂b: Zero (3x3) - measurement independent of gyro bias
     // Already zero from initialization
 
-    return H;
+    return -H;
 }
