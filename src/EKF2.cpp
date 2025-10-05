@@ -1,4 +1,5 @@
 #include "EKF2.hpp"
+
 #include <cmath>
 
 EKF2::EKF2(double dt, const Eigen::Vector3d& initial_accel) : dt(dt) {
@@ -25,7 +26,6 @@ EKF2::EKF2(double dt, const Eigen::Vector3d& initial_accel) : dt(dt) {
     x(2) = cr * sp * cy + sr * cp * sy;  // q2 (y)
     x(3) = cr * cp * sy - sr * sp * cy;  // q3 (z)
 
-    // Bias initialized to zero (already done)
 
     // Initialize covariance matrix (7x7)
     P = Eigen::MatrixXd::Identity(7, 7);
@@ -137,10 +137,11 @@ double EKF2::getPitch() const {
     double sinp = 2 * (q0 * q2 - q3 * q1);
 
     // Handle gimbal lock
-    if (std::abs(sinp) >= 1)
+    if (std::abs(sinp) >= 1) {
         return std::copysign(M_PI / 2, sinp);
-    else
+    } else {
         return std::asin(sinp);
+    }
 }
 
 void EKF2::normalizeQuaternion() {
