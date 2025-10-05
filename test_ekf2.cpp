@@ -7,47 +7,40 @@
 int main()
 {
     std::cout << std::fixed << std::setprecision(6);
+    double dt = 0.02; // 50 Hz sampling rate
 
     // Read gyro data
     CsvReader gyroData("Data/gyro.csv");
     gyroData.read();
-    std::cout << "=== Gyro Data Loaded ===\n";
-    gyroData.printStats();
 
     // Read accel data
     CsvReader accelData("Data/accel.csv");
     accelData.read();
-    std::cout << "=== Accel Data Loaded ===\n";
-    accelData.printStats();
 
     // Read ground truth angles
     CsvReader anglesData("Data/angles.csv");
     anglesData.read();
-    std::cout << "=== Ground Truth Angles Loaded ===\n";
-    anglesData.printStats();
-    std::cout << "\n";
 
     // Get matrices
     Eigen::MatrixXd gyroMatrix = gyroData.getEigenData();
     Eigen::MatrixXd accelMatrix = accelData.getEigenData();
     Eigen::MatrixXd anglesMatrix = anglesData.getEigenData();
-
-    // Initialize EKF2 with first accelerometer reading
-    double dt = 0.02; // 50 Hz sampling rate
-    Eigen::Vector3d firstAccel = accelMatrix.row(0).transpose();
-    firstAccel(0) = -firstAccel(0); // Correct sensor X-axis inversion
-
-    EKF2 ekf(dt, firstAccel);
-
-    std::cout << "=== EKF2 Test with Real Data ===\n\n";
-
-    int numSamples = std::min(500, static_cast<int>(gyroMatrix.rows()));
-
     // Extract ground truth
     Eigen::VectorXd rollTruth = Utils::getVectorFromMatrix(anglesMatrix, 0);
     Eigen::VectorXd pitchTruth = Utils::getVectorFromMatrix(anglesMatrix, 1);
     Utils::convertToDeg(rollTruth);
     Utils::convertToDeg(pitchTruth);
+
+    // Initialize EKF2 with first accelerometer reading
+    Eigen::Vector3d firstAccel = accelMatrix.row(0).transpose();
+    firstAccel(0) = -firstAccel(0); // Correct sensor X-axis inversion
+
+    EKF2 ekf(dt, firstAccel);
+    
+    std::cout << "Created EK2 with real data\n\n";
+
+    int numSamples = std::min(500, static_cast<int>(gyroMatrix.rows()));
+
 
     std::cout << "Number of samples: " << numSamples << "\n";
     std::cout << "Initial Quaternion: " << ekf.getQuaternion().transpose() << "\n";
@@ -65,10 +58,9 @@ int main()
 
     for(int i = 0; i < numSamples; i++)
     {
-        // Get sensor readings
         Eigen::Vector3d gyroReading = gyroMatrix.row(i).transpose();
         Eigen::Vector3d accelReading = accelMatrix.row(i).transpose();
-        accelReading(0) = -accelReading(0); // Correct sensor X-axis inversion
+        accelReading(0) = -accelReading(0); // TODO CHECK - INVERT OF AXIS
 
         // Run PREDICT step
         ekf.predict(gyroReading);
