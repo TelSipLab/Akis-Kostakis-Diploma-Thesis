@@ -2,8 +2,7 @@
 #include "Utils.hpp"
 #include "csvreader.hpp"
 
-int main()
-{
+int main() {
     std::cout.precision(10);
 
     CsvReader gyroData("Data/gyro.csv");
@@ -47,10 +46,10 @@ int main()
     std::cout << "MEA between estimated and truth pitch: " << Utils::mea(pitchTruthVector, pitch) << std::endl;
 
     Utils::printVecToFile(roll, "Results/predicted_roll.txt");
-    Utils::printVecToFile(rollTruthVector, "Results/expected_roll.txt");
+    // Utils::printVecToFile(rollTruthVector, "Results/expected_roll.txt");
 
     Utils::printVecToFile(pitch, "Results/predicted_pitch.txt");
-    Utils::printVecToFile(pitchTruthVector, "Results/expected_pitch.txt");
+    // Utils::printVecToFile(pitchTruthVector, "Results/expected_pitch.txt");
 
     return 0;
 }
