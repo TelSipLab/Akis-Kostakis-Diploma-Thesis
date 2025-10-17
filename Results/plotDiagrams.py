@@ -2,33 +2,42 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Define file names
-rollPredicted = 'Results/predicted_roll_complementary.txt'
+rollPredicted = 'Results/predicted_roll_ekf.txt'
 rollReal = 'Results/expected_roll.txt'
 
-rmse = 0.70 # either by cpp code or we can calculate from python
+rmse = 0.29 # either by cpp code or we can calculate from python
 
 # Read data from files
 rollData = np.loadtxt(rollPredicted)
 rollReal = np.loadtxt(rollReal)
 
-# Create a plot
-plt.figure(figsize=(10, 6))
-plt.plot(rollData, label='Predicted Roll', linestyle='-', linewidth=1, markersize=4)
+# Create a plot with larger figure size
+plt.figure(figsize=(12, 8))
+plt.plot(rollData, label='Estimated Roll', linestyle='-', linewidth=1, markersize=4)
 plt.plot(rollReal, label='Expected Roll', linestyle='--', linewidth=1, markersize=4)
 
 # Add labels, title, and grid
 plt.xlabel('Time')
 plt.ylabel('Degrees')
-plt.title("Actual roll vs the complementary filter calculation")
+plt.title("Actual roll vs the EKF estimation")
 plt.legend()
 plt.grid(True)
+
+# Dynamically set y-axis limits with some padding
+all_data = np.concatenate([rollData, rollReal])
+y_min, y_max = all_data.min(), all_data.max()
+y_margin = (y_max - y_min) * 0.1  # 10% margin
+plt.ylim(y_min - y_margin, y_max + y_margin)
 
 # Display RMSE on the plot
 plt.text(0.05, 0.95, f'RMSE: {rmse}',
          transform=plt.gca().transAxes,  # use axes coordinates
          fontsize=12, color='black', verticalalignment='top')
 
+# Reduce whitespace margins
+plt.tight_layout()
+
 # Show the plot
 # plt.show()
 
-plt.savefig("Results/Figures/RollRMSEComplementary.png")
+plt.savefig("Results/Figures/RollRMSE_EKF.png")
