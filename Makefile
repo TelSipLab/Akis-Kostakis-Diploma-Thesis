@@ -1,18 +1,31 @@
+CXX = g++
 CXX_STANDARD = c++14
+CXXFLAGS = -std=$(CXX_STANDARD) -g
 INCLUDES = -Iinclude
 SRC_DIR = src
 BUILD_DIR = build
 
-SOURCES = $(wildcard $(SRC_DIR)/*.cpp) main.cpp
-OBJECTS = $(SOURCES:.cpp=.o)
+SOURCES = $(wildcard $(SRC_DIR)/*.cpp)
+OBJECTS = $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SOURCES))
+MAIN_OBJ = $(BUILD_DIR)/complentaryFilterMain.o
 
-all: main
+# Create build directory if it doesn't exist
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
 
-main: $(SOURCES)
-	g++ $(SOURCES) $(INCLUDES) -std=$(CXX_STANDARD) -o main.out -g
+# Compile source files to object files
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 
-run: main
-	./main.out
+# Compile main file to object file
+$(MAIN_OBJ): complentaryFilterMain.cpp | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
+
+# Link all object files to create executable
+complemntaryFilter: $(OBJECTS) $(MAIN_OBJ)
+	$(CXX) $(CXXFLAGS) $^ -o complmentary.out
 
 clean:
-	rm -f main.out $(SRC_DIR)/*.o *.o
+	rm -rf $(BUILD_DIR) *.out
+
+.PHONY: complemntaryFilter clean
