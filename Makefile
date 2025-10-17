@@ -8,7 +8,7 @@ BUILD_DIR = build
 SOURCES = $(wildcard $(SRC_DIR)/*.cpp)
 OBJECTS = $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SOURCES))
 COMPLEMENTARY_MAIN_OBJ = $(BUILD_DIR)/complentaryFilterMain.o
-EKF_MAIN_OBJ = $(BUILD_DIR)/test_ekf2.o
+EKF_MAIN_OBJ = $(BUILD_DIR)/ekfFilter.o
 
 # Create build directory if it doesn't exist
 $(BUILD_DIR):
@@ -23,7 +23,7 @@ $(COMPLEMENTARY_MAIN_OBJ): complentaryFilterMain.cpp | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 
 # Compile EKF filter main file to object file
-$(EKF_MAIN_OBJ): test_ekf2.cpp | $(BUILD_DIR)
+$(EKF_MAIN_OBJ): ekfFilter.cpp | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 
 # Link all object files to create complementary filter executable
