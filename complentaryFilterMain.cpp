@@ -45,10 +45,10 @@ int main() {
     std::cout << "RMSE between estimated and truth pitch: " << Utils::rmse(pitchTruthVector, pitch) << std::endl;
     std::cout << "MEA between estimated and truth pitch: " << Utils::mea(pitchTruthVector, pitch) << std::endl;
 
-    Utils::printVecToFile(roll, "Results/predicted_roll.txt");
+    Utils::printVecToFile(roll, "Results/predicted_roll_complementary.txt");
     // Utils::printVecToFile(rollTruthVector, "Results/expected_roll.txt");
 
-    Utils::printVecToFile(pitch, "Results/predicted_pitch.txt");
+    Utils::printVecToFile(pitch, "Results/predicted_pitch_complementary.txt");
     // Utils::printVecToFile(pitchTruthVector, "Results/expected_pitch.txt");
 
     return 0;

@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Define file names
-rollPredicted = 'Results/predicted_roll.txt'
+rollPredicted = 'Results/predicted_roll_complementary.txt'
 rollReal = 'Results/expected_roll.txt'
 
 rmse = 0.70 # either by cpp code or we can calculate from python

@@ -7,7 +7,8 @@ BUILD_DIR = build
 
 SOURCES = $(wildcard $(SRC_DIR)/*.cpp)
 OBJECTS = $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SOURCES))
-MAIN_OBJ = $(BUILD_DIR)/complentaryFilterMain.o
+COMPLEMENTARY_MAIN_OBJ = $(BUILD_DIR)/complentaryFilterMain.o
+EKF_MAIN_OBJ = $(BUILD_DIR)/test_ekf2.o
 
 # Create build directory if it doesn't exist
 $(BUILD_DIR):
@@ -17,15 +18,23 @@ $(BUILD_DIR):
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 
-# Compile main file to object file
-$(MAIN_OBJ): complentaryFilterMain.cpp | $(BUILD_DIR)
+# Compile complementary filter main file to object file
+$(COMPLEMENTARY_MAIN_OBJ): complentaryFilterMain.cpp | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 
-# Link all object files to create executable
-complemntaryFilter: $(OBJECTS) $(MAIN_OBJ)
+# Compile EKF filter main file to object file
+$(EKF_MAIN_OBJ): test_ekf2.cpp | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
+
+# Link all object files to create complementary filter executable
+complemntaryFilter: $(OBJECTS) $(COMPLEMENTARY_MAIN_OBJ)
 	$(CXX) $(CXXFLAGS) $^ -o complmentary.out
+
+# Link all object files to create EKF filter executable
+ekfFilter: $(OBJECTS) $(EKF_MAIN_OBJ)
+	$(CXX) $(CXXFLAGS) $^ -o ekf.out
 
 clean:
 	rm -rf $(BUILD_DIR) *.out
 
-.PHONY: complemntaryFilter clean
+.PHONY: complemntaryFilter ekfFilter clean
