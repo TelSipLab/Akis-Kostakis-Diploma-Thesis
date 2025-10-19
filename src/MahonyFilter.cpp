@@ -1,5 +1,12 @@
 #include "MahonyFilter.hpp"
 
+MahonyFilter::MahonyFilter(double dt, double kp) :
+    rHat(Eigen::Matrix3d::Identity()),
+    dt(dt),
+    kp(kp) {
+
+}
+
 void MahonyFilter::setData(const Eigen::MatrixXd& gyroData, const Eigen::MatrixXd& accelData) {
     this->gyroData = gyroData;
     this->accelometerData = accelData;
@@ -10,18 +17,30 @@ void MahonyFilter::setData(const Eigen::MatrixXd& gyroData, const Eigen::MatrixX
     }
 }
 
+void MahonyFilter::update(const Eigen::Vector3d& omega_y, const Eigen::Matrix3d& R_y) {
+
+    // Equation 1
+    Eigen::Matrix3d rTilda = rHat.transpose() * R_y;
+
+    // Equation 7
+    Eigen::Matrix3d Pa_R_tilde = 0.5 * (rTilda - rTilda.transpose());
+    Eigen::Vector3d omega_mes = vex(Pa_R_tilde);
+
+    // Equation 10
+    Eigen::Vector3d omega_total = omega_y + kp * omega_mes;
+    Eigen::Matrix3d Omega_skew = skew(omega_total);
+
+    rHat = rHat + rHat * Omega_skew * dt;
+
+    orthonormalize();
+}
+
+// Does Equation 10 from the papper
 void MahonyFilter::calculate() {
-    int size = gyroData.rows();
+    // int size = gyroData.rows();
 
-    for (int i = 0; i < size; i++) {
-        // Step 1: Construct measured rotation from accelerometer
-        // Assumes accel ≈ -R^T * gravity_inertial
-        // gravity_inertial = [0, 0, -9.81] in inertial frame        
-        Eigen::Vector3d accel = accelometerData.row(i).transpose();
-        Eigen::Vector3d accel_normalized = accel.normalized();
+    // for (int i = 0; i < size; i++) {
 
-        // Estimated gravity direction in body frame using current estimate
-        Eigen::Vector3d gravity_inertial(0, 0, -1);  // Normalized (points down)
-        Eigen::Vector3d gravity_estimated = q_hat.conjugate() * gravity_inertial;
-    }
+    //     rTilda = rHat.transpose() * 
+    // }
 }
