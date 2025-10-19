@@ -8,7 +8,7 @@ int main() {
     std::cout << std::fixed << std::setprecision(6);
 
     const double dt = 0.02;
-    const double kp = 1.0;  // Proportional gain from paper
+    const double kp = 50.0;  // Increased gain for faster correction
     const int DISPLAY_SAMPLES = 10;
 
     // Load data
@@ -24,7 +24,7 @@ int main() {
     anglesData.read();
     Eigen::MatrixXd groundTruthAngles = anglesData.getEigenData();
 
-    // Ground truth (convert to degrees)
+    // Ground truth (convert from radians to degrees)
     Eigen::VectorXd rollGroundTruth = Utils::getVectorFromMatrix(groundTruthAngles, 0);
     Eigen::VectorXd pitchGroundTruth = Utils::getVectorFromMatrix(groundTruthAngles, 1);
     Utils::convertToDeg(rollGroundTruth);
@@ -58,11 +58,11 @@ int main() {
 
         // Compute roll and pitch from accelerometer
         double roll_meas = atan2(accel_norm.y(), accel_norm.z());
-        double pitch_meas = atan2(accel_norm.x(),
+        double pitch_meas = atan2(-accel_norm.x(),
             sqrt(accel_norm.y() * accel_norm.y() +
                 accel_norm.z() * accel_norm.z()));
 
-        // Construct rotation matrix R_y (ZYX Euler angles with yaw=0)
+        // Construct rotation matrix R_y from accelerometer measurements
         Eigen::Matrix3d R_y =
             (Eigen::AngleAxisd(0.0, Eigen::Vector3d::UnitZ()) *           // yaw = 0
                 Eigen::AngleAxisd(pitch_meas, Eigen::Vector3d::UnitY()) *
@@ -71,17 +71,17 @@ int main() {
         // Update Mahony filter (Equation 10)
         mahony.update(gyroReading, R_y);
 
-        // Extract roll and pitch directly from rotation matrix R̂
+        // Extract roll and pitch from rotation matrix R̂
         // For ZYX Euler: roll = atan2(R32, R33), pitch = atan2(-R31, sqrt(R32² + R33²))
         Eigen::Matrix3d R_hat = mahony.rHat;
 
-        double rollEst = atan2(R_hat(2, 1), R_hat(2, 2));
+        double rollEst = atan2(R_hat(2, 1), R_hat(2, 2)) * 180.0 / M_PI;
         double pitchEst = atan2(-R_hat(2, 0),
             sqrt(R_hat(2, 1) * R_hat(2, 1) +
-                R_hat(2, 2) * R_hat(2, 2)));
+                R_hat(2, 2) * R_hat(2, 2))) * 180.0 / M_PI;
 
-        rollEstimated(i) = rollEst * 180.0 / M_PI;
-        pitchEstimated(i) = pitchEst * 180.0 / M_PI;
+        rollEstimated(i) = rollEst;
+        pitchEstimated(i) = pitchEst;
 
         // Display first and last samples
         if (i < DISPLAY_SAMPLES || i >= numSamples - DISPLAY_SAMPLES) {
