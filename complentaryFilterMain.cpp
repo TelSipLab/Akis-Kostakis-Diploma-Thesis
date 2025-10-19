@@ -38,12 +38,13 @@ int main() {
 
     Utils::convertToDeg(rollTruthVector);  // Now in Degrees
     Utils::convertToDeg(pitchTruthVector); // Now in Degrees
+    
+    std::cout << "\n=== Error Metrics (all samples) ===\n";
+    std::cout << "Roll RMSE:  " << Utils::rmse(rollTruthVector, roll) << " degrees\n";
+    std::cout << "Roll MEA:   " << Utils::mea(rollTruthVector, roll) << " degrees\n";
+    std::cout << "Pitch RMSE: " << Utils::rmse(pitchTruthVector, pitch) << " degrees\n";
+    std::cout << "Pitch MEA:  " << Utils::mea(pitchTruthVector, pitch) << " degrees\n";
 
-    std::cout << "RMSE between estimated and truth roll: " << Utils::rmse(rollTruthVector, roll) << std::endl;
-    std::cout << "MEA between estimated and truth roll: " << Utils::mea(rollTruthVector, roll) << std::endl;
-
-    std::cout << "RMSE between estimated and truth pitch: " << Utils::rmse(pitchTruthVector, pitch) << std::endl;
-    std::cout << "MEA between estimated and truth pitch: " << Utils::mea(pitchTruthVector, pitch) << std::endl;
 
     Utils::printVecToFile(roll, "Results/predicted_roll_complementary.txt");
     // Utils::printVecToFile(rollTruthVector, "Results/expected_roll.txt");
