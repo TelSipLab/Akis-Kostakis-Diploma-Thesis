@@ -11,6 +11,11 @@ public:
 
     void update(const Eigen::Vector3d& omega_y, const Eigen::Matrix3d& R_y);
 
+    // Initialize R̂ with a given rotation matrix
+    void initialize(const Eigen::Matrix3d& R_init) {
+        rHat = R_init;
+    }
+
     // Just do a full run on the data
     void calculate();
 
@@ -18,11 +23,11 @@ public:
         return rHat.eulerAngles(0, 1, 2);
     }
 
+    Eigen::Matrix3d rHat;  // Make public for direct access
+
 private:
     double dt;
     double kp;
-
-    Eigen::Matrix3d rHat;
 
     // Data gathered from the sensons
     Eigen::MatrixXd accelometerData;
