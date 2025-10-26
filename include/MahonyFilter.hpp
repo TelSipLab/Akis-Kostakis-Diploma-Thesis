@@ -7,49 +7,29 @@ class MahonyFilter {
 public:
     MahonyFilter(double dt, double kp);
 
-    void setData(const Eigen::MatrixXd& gyroData, const Eigen::MatrixXd& accelData);
+    void setIMUData(const Eigen::MatrixXd &gyroData, const Eigen::MatrixXd &accelData);
+    void predictForAllData();
 
-    void update(const Eigen::Vector3d& omega_y, const Eigen::Matrix3d& R_y);
-
-    // Initialize R̂ with a given rotation matrix
-    void initialize(const Eigen::Matrix3d& R_init) {
-        rHat = R_init;
-    }
-
-    // Just do a full run on the data
-    void calculate();
-
-    Eigen::Vector3d getEulerAngles() const {
-        return rHat.eulerAngles(0, 1, 2);
-    }
-
-    Eigen::Matrix3d rHat;  // Make public for direct access
-
-private:
+    const Eigen::VectorXd& getRollEstimation();
+    const Eigen::VectorXd& getPitchEstimation();
+    // Eigen::Vector3d getEulerAngles() const;
+    // const Eigen::Matrix3d &getRHat() const;
+ private:
     double dt;
     double kp;
+    
+    Eigen::Matrix3d rHat;
 
-    // Data gathered from the sensons
+    // IMU Input
     Eigen::MatrixXd accelometerData;
     Eigen::MatrixXd gyroData;
+    
+    // Prediciton
+    Eigen::VectorXd rollEstimation;
+    Eigen::VectorXd pitchEstimation;
 
+    void update(const Eigen::Vector3d &omega_y, const Eigen::Matrix3d &R_y);
 
-    // UTILS TO BE MOVED
-
-    // Skew-symmetric matrix from vector (Section II-A)
-    static Eigen::Matrix3d skew(const Eigen::Vector3d& v) {
-        Eigen::Matrix3d s;
-        s << 0, -v(2), v(1),
-            v(2), 0, -v(0),
-            -v(1), v(0), 0;
-        return s;
-    }
-
-
-    // Vector from skew-symmetric matrix (Section II-A)
-    static Eigen::Vector3d vex(const Eigen::Matrix3d& M) {
-        return Eigen::Vector3d(M(2, 1), M(0, 2), M(1, 0));
-    }
 
     // TODO Check why this is needed
     void orthonormalize() {
@@ -57,7 +37,7 @@ private:
 
         rHat = svd.matrixU() * svd.matrixV().transpose();
 
-        // Ensure det(R̂) = 1
+        // Ensure det(R̂) = 1 which is a condition in the SO(3) space
         if (rHat.determinant() < 0) {  // ← Fixed
             Eigen::Matrix3d U = svd.matrixU();
             U.col(2) *= -1;

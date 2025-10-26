@@ -4,7 +4,6 @@
 #include "pch.h"
 
 #include <fstream>
-#include <iostream>
 #include <numeric>
 
 class Utils
@@ -69,6 +68,31 @@ class Utils
         {
             std::cerr << "Unable to open file: " << filePath << std::endl;
         }
+    }
+
+    // Skew-symmetric matrix from vector (Section II-A)
+    static Eigen::Matrix3d skewMatrixFromVector(const Eigen::Vector3d &v)
+    {
+        Eigen::Matrix3d s;
+        s << 0, -v(2), v(1), v(2), 0, -v(0), -v(1), v(0), 0;
+        return s;
+    }
+
+    // Vector from skew-symmetric matrix (Section II-A)
+    static Eigen::Vector3d vexFromSkewMatrix(const Eigen::Matrix3d &skewMatrix)
+    {
+        return Eigen::Vector3d(skewMatrix(2, 1), skewMatrix(0, 2), skewMatrix(1, 0));
+    }
+
+    // Equation from (Complementary_Filter_Introduction.pdf)
+    static double calculateRollFromAccelInput(double ay, double az) {
+        return std::atan2(ay, az);
+    }
+
+    // Equation from (Complementary_Filter_Introduction.pdf)
+    static double calculatePitchFromAccelInput(double ax, double ay, double az) {
+        double tmp = std::sqrt(ay * ay + az * az);
+        return std::atan2(-ax, tmp);
     }
 };
 

@@ -106,7 +106,7 @@ void EKF2::update(const Eigen::Vector3d& accel) {
 
 void EKF2::processAllData(const Eigen::MatrixXd& gyro_data,
                          const Eigen::MatrixXd& accel_data) {
-    int n_samples = gyro_data.rows();
+    int n_samples = static_cast<int>(gyro_data.rows());
 
     for (int i = 0; i < n_samples; ++i) {
         Eigen::Vector3d gyro = gyro_data.row(i);

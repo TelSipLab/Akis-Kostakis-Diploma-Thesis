@@ -67,7 +67,7 @@ class CsvReader
                 rows++;
                 if(cols == 0)
                 { // No need to re-check
-                    cols = row.size();
+                    cols = static_cast<int>(row.size());
                 }
             }
         }
