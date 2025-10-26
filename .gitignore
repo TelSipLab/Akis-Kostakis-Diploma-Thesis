@@ -8,3 +8,4 @@ out/
 bin/
 .vs/
 AttitudeEstimation.vcxproj.user
+.idea/
