@@ -1,11 +1,11 @@
 #include "EKF2.hpp"
 #include "csvreader.hpp"
 #include "Utils.hpp"
+
 #include <iostream>
 #include <iomanip>
 
-int main()
-{
+int main() {
     std::cout << std::fixed << std::setprecision(6);
 
     const double dt = 0.02;

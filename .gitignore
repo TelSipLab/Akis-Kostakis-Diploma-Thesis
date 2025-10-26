@@ -6,3 +6,5 @@ build/
 compile_commands.json
 out/
 bin/
+.vs/
+AttitudeEstimation.vcxproj.user

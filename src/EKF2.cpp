@@ -1,7 +1,5 @@
 #include "EKF2.hpp"
 
-#include <cmath>
-
 EKF2::EKF2(double dt, const Eigen::Vector3d& initial_accel) : dt(dt) {
     // Initialize state vector (7x1)
     x = Eigen::VectorXd::Zero(7);

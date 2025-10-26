@@ -20,7 +20,7 @@ public:
     void calculate();
 
     Eigen::Vector3d getEulerAngles() const {
-        return rHat.eulerAngles(0, 1, 2);
+        return rHat.canonicalEulerAngles(0, 1, 2);
     }
 
     Eigen::Matrix3d rHat;  // Make public for direct access

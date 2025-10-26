@@ -1,5 +1,4 @@
 #include "ExtendedKalmanFilter.hpp"
-#include <cmath>
 
 ExtendedKalmanFilter::ExtendedKalmanFilter(double dt, const Eigen::Vector4d &initialQuaternion) : dt(dt)
 {

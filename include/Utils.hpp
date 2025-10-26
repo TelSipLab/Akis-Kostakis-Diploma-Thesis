@@ -3,7 +3,6 @@
 
 #include "pch.h"
 
-#include <cmath>
 #include <fstream>
 #include <iostream>
 #include <numeric>

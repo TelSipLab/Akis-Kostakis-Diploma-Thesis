@@ -1,6 +1,5 @@
 #include "ComplementaryFilter.hpp"
 
-#include <cmath>
 #include <iostream>
 
 ComplementaryFilter::ComplementaryFilter(double alphaC, double dtarg)
