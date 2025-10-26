@@ -13,12 +13,10 @@ COMPLEMENTARY_MAIN_OBJ = $(BUILD_DIR)/complentaryFilterMain.o
 EKF_MAIN_OBJ = $(BUILD_DIR)/ekfFilterMain.o
 MAHONYFILTER_MAIN_OBJ=$(BUILD_DIR)/mahonyFilterMain.cpp.o
 
-# Create build directory if it doesn't exist
+# Create build and binary directories if they don't exist
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
-
-# Create binary directory if it doesn't exist
-	mkdir -p $(BINARY_DIR)	
+	mkdir -p $(BINARY_DIR)
 
 # Compile ALL source files to object files
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp | $(BUILD_DIR)
