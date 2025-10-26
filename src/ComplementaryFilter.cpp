@@ -2,14 +2,12 @@
 
 #include <iostream>
 
-ComplementaryFilter::ComplementaryFilter(double alphaC, double dtarg)
-{
+ComplementaryFilter::ComplementaryFilter(double alphaC, double dtarg) {
     alphaCoeff = alphaC;
     dt = dtarg;
 }
 
-void ComplementaryFilter::setAccelData(const Eigen::MatrixXd &data)
-{
+void ComplementaryFilter::setAccelData(const Eigen::MatrixXd& data) {
     accelometerData = data;
 
     // TODO move these out of here
@@ -17,8 +15,7 @@ void ComplementaryFilter::setAccelData(const Eigen::MatrixXd &data)
     phiA.setZero();
 }
 
-void ComplementaryFilter::setGyroData(const Eigen::MatrixXd &data)
-{
+void ComplementaryFilter::setGyroData(const Eigen::MatrixXd& data) {
     gyroData = data;
 
     // TODO move these out of here
@@ -33,18 +30,15 @@ void ComplementaryFilter::setGyroData(const Eigen::MatrixXd &data)
     pitch.setZero();
 }
 
-void ComplementaryFilter::calculateRoll()
-{
-    if(gyroData.rows() != accelometerData.rows())
-    {
+void ComplementaryFilter::calculateRoll() {
+    if(gyroData.rows() != accelometerData.rows()) {
         // TODO throw exception ??
         std::cout << "Wrong number of rows wont calculate roll \n";
         return;
     }
 
     // All data are init to zero no need to initialize
-    for(int i = 1; i < gyroData.rows(); i++)
-    { // We start from 1
+    for(int i = 1; i < gyroData.rows(); i++) { // We start from 1
         double ay = accelometerData(i, 1);
         double az = accelometerData(i, 2);
 
@@ -56,10 +50,8 @@ void ComplementaryFilter::calculateRoll()
     }
 }
 
-void ComplementaryFilter::calculatePitch()
-{
-    if(gyroData.rows() != accelometerData.rows())
-    {
+void ComplementaryFilter::calculatePitch() {
+    if(gyroData.rows() != accelometerData.rows()) {
         // TODO throw exception ??
         std::cout << "Wrong data wont calculate pitch...\n";
         return;
@@ -69,8 +61,7 @@ void ComplementaryFilter::calculatePitch()
     thetaA.setZero();
     const double diffConst = 1 - alphaCoeff;
 
-    for(int i = 1; i < gyroData.rows(); i++)
-    {
+    for(int i = 1; i < gyroData.rows(); i++) {
         double ax = accelometerData(i, 0);
         double ay = accelometerData(i, 1);
         double az = accelometerData(i, 2);

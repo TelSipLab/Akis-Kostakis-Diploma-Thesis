@@ -48,7 +48,7 @@ BraceWrapping:
   SplitEmptyNamespace: true
 BreakBeforeBinaryOperators: None
 BreakBeforeConceptDeclarations: true
-BreakBeforeBraces: Allman
+BreakBeforeBraces: Attach
 BreakBeforeInheritanceComma: false
 BreakInheritanceList: BeforeColon
 BreakBeforeTernaryOperators: true
@@ -130,9 +130,9 @@ PenaltyBreakTemplateDeclaration: 10
 PenaltyExcessCharacter: 1000000
 PenaltyReturnTypeOnItsOwnLine: 60
 PenaltyIndentedWhitespace: 0
-PointerAlignment: Right
+PointerAlignment: Left
 # PPIndentWidth:   -1
-ReferenceAlignment: Pointer
+ReferenceAlignment: Left
 ReflowComments:  true
 # RemoveBracesLLVM: false
 # RequiresClausePosition: OwnLine

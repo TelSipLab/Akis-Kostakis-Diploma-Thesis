@@ -8,8 +8,7 @@ EKF2::EKF2(double dt, const Eigen::Vector3d& initial_accel) : dt(dt) {
     // Calculate roll and pitch from initial accelerometer
     double roll = std::atan2(initial_accel.y(), initial_accel.z());
     double pitch = std::atan2(-initial_accel.x(),
-                              std::sqrt(initial_accel.y() * initial_accel.y() +
-                                       initial_accel.z() * initial_accel.z()));
+                              std::sqrt(initial_accel.y() * initial_accel.y() + initial_accel.z() * initial_accel.z()));
 
     // Convert roll, pitch to quaternion (yaw = 0)
     double cy = std::cos(0.0 * 0.5);
@@ -19,11 +18,10 @@ EKF2::EKF2(double dt, const Eigen::Vector3d& initial_accel) : dt(dt) {
     double cr = std::cos(roll * 0.5);
     double sr = std::sin(roll * 0.5);
 
-    x(0) = cr * cp * cy + sr * sp * sy;  // q0 (w)
-    x(1) = sr * cp * cy - cr * sp * sy;  // q1 (x)
-    x(2) = cr * sp * cy + sr * cp * sy;  // q2 (y)
-    x(3) = cr * cp * sy - sr * sp * cy;  // q3 (z)
-
+    x(0) = cr * cp * cy + sr * sp * sy; // q0 (w)
+    x(1) = sr * cp * cy - cr * sp * sy; // q1 (x)
+    x(2) = cr * sp * cy + sr * cp * sy; // q2 (y)
+    x(3) = cr * cp * sy - sr * sp * cy; // q3 (z)
 
     // Initialize covariance matrix (7x7)
     P = Eigen::MatrixXd::Identity(7, 7);
@@ -49,10 +47,7 @@ void EKF2::predict(const Eigen::Vector3d& gyro) {
 
     // Quaternion derivative matrix (big omega)
     Eigen::Matrix4d Omega;
-    Omega <<     0,  -w(0),  -w(1),  -w(2),
-              w(0),      0,   w(2),  -w(1),
-              w(1),  -w(2),      0,   w(0),
-              w(2),   w(1),  -w(0),      0;
+    Omega << 0, -w(0), -w(1), -w(2), w(0), 0, w(2), -w(1), w(1), -w(2), 0, w(0), w(2), w(1), -w(0), 0;
 
     // Update quaternion using first-order integration
     Eigen::Vector4d q_new = q + 0.5 * dt * Omega * q;
@@ -75,7 +70,7 @@ void EKF2::update(const Eigen::Vector3d& accel) {
     Eigen::Matrix3d R_mat = quaternionToRotationMatrix(q);
 
     // Gravity in navigation frame
-    Eigen::Vector3d g_n(0, 0, 1);  // Normalized gravity vector
+    Eigen::Vector3d g_n(0, 0, 1); // Normalized gravity vector
 
     // Expected measurement: rotate gravity to body frame
     Eigen::Vector3d h = R_mat.transpose() * g_n;
@@ -104,11 +99,10 @@ void EKF2::update(const Eigen::Vector3d& accel) {
     P = (I - K * H) * P;
 }
 
-void EKF2::processAllData(const Eigen::MatrixXd& gyro_data,
-                         const Eigen::MatrixXd& accel_data) {
+void EKF2::processAllData(const Eigen::MatrixXd& gyro_data, const Eigen::MatrixXd& accel_data) {
     int n_samples = static_cast<int>(gyro_data.rows());
 
-    for (int i = 0; i < n_samples; ++i) {
+    for(int i = 0; i < n_samples; ++i) {
         Eigen::Vector3d gyro = gyro_data.row(i);
         Eigen::Vector3d accel = accel_data.row(i);
 
@@ -124,8 +118,7 @@ double EKF2::getRoll() const {
     Eigen::Vector4d q = x.head<4>();
     double q0 = q(0), q1 = q(1), q2 = q(2), q3 = q(3);
 
-    return std::atan2(2 * (q0 * q1 + q2 * q3),
-                     1 - 2 * (q1 * q1 + q2 * q2));
+    return std::atan2(2 * (q0 * q1 + q2 * q3), 1 - 2 * (q1 * q1 + q2 * q2));
 }
 
 double EKF2::getPitch() const {
@@ -135,7 +128,7 @@ double EKF2::getPitch() const {
     double sinp = 2 * (q0 * q2 - q3 * q1);
 
     // Handle gimbal lock
-    if (std::abs(sinp) >= 1) {
+    if(std::abs(sinp) >= 1) {
         return std::copysign(M_PI / 2, sinp);
     } else {
         return std::asin(sinp);
@@ -151,9 +144,9 @@ Eigen::Matrix3d EKF2::quaternionToRotationMatrix(const Eigen::Vector4d& q) const
     double q0 = q(0), q1 = q(1), q2 = q(2), q3 = q(3);
 
     Eigen::Matrix3d R;
-    R << q0*q0 + q1*q1 - q2*q2 - q3*q3,  2*(q1*q2 - q0*q3),              2*(q1*q3 + q0*q2),
-         2*(q1*q2 + q0*q3),              q0*q0 - q1*q1 + q2*q2 - q3*q3,  2*(q2*q3 - q0*q1),
-         2*(q1*q3 - q0*q2),              2*(q2*q3 + q0*q1),              q0*q0 - q1*q1 - q2*q2 + q3*q3;
+    R << q0 * q0 + q1 * q1 - q2 * q2 - q3 * q3, 2 * (q1 * q2 - q0 * q3), 2 * (q1 * q3 + q0 * q2),
+        2 * (q1 * q2 + q0 * q3), q0 * q0 - q1 * q1 + q2 * q2 - q3 * q3, 2 * (q2 * q3 - q0 * q1),
+        2 * (q1 * q3 - q0 * q2), 2 * (q2 * q3 + q0 * q1), q0 * q0 - q1 * q1 - q2 * q2 + q3 * q3;
 
     return R;
 }
@@ -167,10 +160,7 @@ Eigen::MatrixXd EKF2::computeF(const Eigen::Vector3d& w) const {
 
     // Quaternion derivative matrix
     Eigen::Matrix4d Omega;
-    Omega <<     0,  -w(0),  -w(1),  -w(2),
-              w(0),      0,   w(2),  -w(1),
-              w(1),  -w(2),      0,   w(0),
-              w(2),   w(1),  -w(0),      0;
+    Omega << 0, -w(0), -w(1), -w(2), w(0), 0, w(2), -w(1), w(1), -w(2), 0, w(0), w(2), w(1), -w(0), 0;
 
     // F_qq (4x4) - derivative of quaternion w.r.t quaternion
     F.block<4, 4>(0, 0) = Eigen::Matrix4d::Identity() + 0.5 * dt * Omega;
@@ -178,9 +168,9 @@ Eigen::MatrixXd EKF2::computeF(const Eigen::Vector3d& w) const {
     // F_qb (4x3) - derivative of quaternion w.r.t bias
     Eigen::Matrix<double, 4, 3> F_qb;
     F_qb.row(0) = 0.5 * dt * Eigen::Vector3d(-q(1), -q(2), -q(3));
-    F_qb.row(1) = 0.5 * dt * Eigen::Vector3d( q(0), -q(3),  q(2));
-    F_qb.row(2) = 0.5 * dt * Eigen::Vector3d( q(3),  q(0), -q(1));
-    F_qb.row(3) = 0.5 * dt * Eigen::Vector3d(-q(2),  q(1),  q(0));
+    F_qb.row(1) = 0.5 * dt * Eigen::Vector3d(q(0), -q(3), q(2));
+    F_qb.row(2) = 0.5 * dt * Eigen::Vector3d(q(3), q(0), -q(1));
+    F_qb.row(3) = 0.5 * dt * Eigen::Vector3d(-q(2), q(1), q(0));
 
     F.block<4, 3>(0, 4) = F_qb;
 

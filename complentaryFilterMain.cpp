@@ -25,11 +25,11 @@ int main() {
     filter.calculateRoll();
     filter.calculatePitch();
 
-    auto &roll = filter.getRoll(); // Results are in RAD
+    auto& roll = filter.getRoll(); // Results are in RAD
     Utils::convertToDeg(roll);     // Now results are in Degree
     Utils::printVec(roll);
 
-    auto &pitch = filter.getPitch(); // Results are in RAD
+    auto& pitch = filter.getPitch(); // Results are in RAD
     Utils::convertToDeg(pitch);      // Now results are in Degree
 
     // File contains RAD
@@ -38,13 +38,12 @@ int main() {
 
     Utils::convertToDeg(rollTruthVector);  // Now in Degrees
     Utils::convertToDeg(pitchTruthVector); // Now in Degrees
-    
+
     std::cout << "\n=== Error Metrics (all samples) ===\n";
     std::cout << "Roll RMSE:  " << Utils::rmse(rollTruthVector, roll) << " degrees\n";
     std::cout << "Roll MEA:   " << Utils::mea(rollTruthVector, roll) << " degrees\n";
     std::cout << "Pitch RMSE: " << Utils::rmse(pitchTruthVector, pitch) << " degrees\n";
     std::cout << "Pitch MEA:  " << Utils::mea(pitchTruthVector, pitch) << " degrees\n";
-
 
     Utils::printVecToFile(roll, "Results/predicted_roll_complementary.txt");
     // Utils::printVecToFile(rollTruthVector, "Results/expected_roll.txt");

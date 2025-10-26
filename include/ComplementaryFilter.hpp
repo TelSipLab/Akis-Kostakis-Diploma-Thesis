@@ -3,29 +3,25 @@
 
 #include "pch.h"
 
-class ComplementaryFilter
-{
+class ComplementaryFilter {
   public:
     ComplementaryFilter() = default;
     ~ComplementaryFilter() = default;
 
     ComplementaryFilter(double alphaC, double dt);
 
-    void setAccelData(const Eigen::MatrixXd &data);
-    void setGyroData(const Eigen::MatrixXd &data);
+    void setAccelData(const Eigen::MatrixXd& data);
+    void setGyroData(const Eigen::MatrixXd& data);
 
-    inline const Eigen::VectorXd &getRoll() const
-    {
+    inline const Eigen::VectorXd& getRoll() const {
         return roll;
     }
 
-    inline Eigen::VectorXd &getRoll()
-    {
+    inline Eigen::VectorXd& getRoll() {
         return roll;
     }
 
-    inline Eigen::VectorXd &getPitch()
-    {
+    inline Eigen::VectorXd& getPitch() {
         return pitch;
     }
 

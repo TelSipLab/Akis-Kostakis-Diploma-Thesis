@@ -20,7 +20,7 @@ ExtendedKalmanFilter::ExtendedKalmanFilter(double dt, const Eigen::Vector4d &ini
 
     // Initialize process noise (7x7)
     processNoise = Eigen::MatrixXd::Zero(7, 7);
-    processNoise.block<4, 4>(0, 0) = 0.01 * Eigen::Matrix4d::Identity();  // Quaternion noise
+    processNoise.block<4, 4>(0, 0) = 0.01 * Eigen::Matrix4d::Identity();   // Quaternion noise
     processNoise.block<3, 3>(4, 4) = 0.0001 * Eigen::Matrix3d::Identity(); // Bias noise
 
     // Initialize measurement noise (3x3) - accelerometer noise
@@ -100,9 +100,8 @@ void ExtendedKalmanFilter::predict(const Eigen::Vector3d &gyroReading)
 
     // Build omega skew-symmetric matrix Ω(ω)
     Eigen::Matrix4d Omega;
-    Omega << 0, -omega_corrected(0), -omega_corrected(1), -omega_corrected(2),
-        omega_corrected(0), 0, omega_corrected(2), -omega_corrected(1),
-        omega_corrected(1), -omega_corrected(2), 0, omega_corrected(0),
+    Omega << 0, -omega_corrected(0), -omega_corrected(1), -omega_corrected(2), omega_corrected(0), 0,
+        omega_corrected(2), -omega_corrected(1), omega_corrected(1), -omega_corrected(2), 0, omega_corrected(0),
         omega_corrected(2), omega_corrected(1), -omega_corrected(0), 0;
 
     // Quaternion derivative: q̇ = 0.5 * Ω(ω) * q
@@ -137,9 +136,7 @@ Eigen::MatrixXd ExtendedKalmanFilter::getStateTransitionJacobian(const Eigen::Ve
     // From q_new = q + dt * 0.5 * Ω(ω) * q
     // ∂f_q/∂q = I + dt * 0.5 * Ω(ω)
     Eigen::Matrix4d Omega;
-    Omega << 0, -omega(0), -omega(1), -omega(2),
-        omega(0), 0, omega(2), -omega(1),
-        omega(1), -omega(2), 0, omega(0),
+    Omega << 0, -omega(0), -omega(1), -omega(2), omega(0), 0, omega(2), -omega(1), omega(1), -omega(2), 0, omega(0),
         omega(2), omega(1), -omega(0), 0;
 
     F.block<4, 4>(0, 0) = Eigen::Matrix4d::Identity() + dt * 0.5 * Omega;
@@ -151,10 +148,7 @@ Eigen::MatrixXd ExtendedKalmanFilter::getStateTransitionJacobian(const Eigen::Ve
 
     // Derivative of Ω(ω)*q with respect to ω components
     Eigen::Matrix<double, 4, 3> dOmega_q_domega;
-    dOmega_q_domega << -q(1), -q(2), -q(3),
-                        q(0),  q(3), -q(2),
-                       -q(3),  q(0),  q(1),
-                        q(2), -q(1),  q(0);
+    dOmega_q_domega << -q(1), -q(2), -q(3), q(0), q(3), -q(2), -q(3), q(0), q(1), q(2), -q(1), q(0);
 
     // Chain rule: ∂f_q/∂b = ∂f_q/∂ω * ∂ω/∂b = -dt * 0.5 * dOmega_q_domega
     F.block<4, 3>(0, 4) = -dt * 0.5 * dOmega_q_domega;
@@ -173,7 +167,7 @@ void ExtendedKalmanFilter::update(const Eigen::Vector3d &accelReading)
     // Step 1: Correct accelerometer sign (sensor X-axis is inverted)
     // Same issue as in ComplementaryFilter - ax should be negated
     Eigen::Vector3d accelCorrected = accelReading;
-    accelCorrected(0) = accelCorrected(0);  // Negate ax
+    accelCorrected(0) = accelCorrected(0); // Negate ax
 
     // Normalize accelerometer reading (get gravity direction)
     double accelMagnitude = accelCorrected.norm();

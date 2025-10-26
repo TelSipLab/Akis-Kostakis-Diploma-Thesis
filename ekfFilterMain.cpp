@@ -1,9 +1,9 @@
 #include "EKF2.hpp"
-#include "csvreader.hpp"
 #include "Utils.hpp"
+#include "csvreader.hpp"
 
-#include <iostream>
 #include <iomanip>
+#include <iostream>
 
 int main() {
     std::cout << std::fixed << std::setprecision(6);
@@ -49,8 +49,7 @@ int main() {
     std::cout << "Step | Roll Truth | Roll Est | Pitch Truth | Pitch Est\n";
     std::cout << "-----+------------+----------+-------------+-----------\n";
 
-    for(int i = 0; i < numSamples; i++)
-    {
+    for(int i = 0; i < numSamples; i++) {
         Eigen::Vector3d gyroReading = gyroMeasurements.row(i).transpose();
         Eigen::Vector3d accelReading = accelMeasurements.row(i).transpose();
         accelReading(0) = -accelReading(0);
@@ -61,14 +60,13 @@ int main() {
         rollEstimated(i) = ekf.getRoll() * 180.0 / M_PI;
         pitchEstimated(i) = ekf.getPitch() * 180.0 / M_PI;
 
-        if (i < DISPLAY_SAMPLES || i >= numSamples - DISPLAY_SAMPLES) {
-            std::cout << std::setw(4) << i+1 << " | ";
+        if(i < DISPLAY_SAMPLES || i >= numSamples - DISPLAY_SAMPLES) {
+            std::cout << std::setw(4) << i + 1 << " | ";
             std::cout << std::setw(10) << rollGroundTruth(i) << " | ";
             std::cout << std::setw(8) << rollEstimated(i) << " | ";
             std::cout << std::setw(11) << pitchGroundTruth(i) << " | ";
             std::cout << std::setw(9) << pitchEstimated(i) << "\n";
-        }
-        else if (i == DISPLAY_SAMPLES) {
+        } else if(i == DISPLAY_SAMPLES) {
             std::cout << "...\n";
         }
     }
@@ -78,7 +76,6 @@ int main() {
     std::cout << "Roll MEA:   " << Utils::mea(rollGroundTruth, rollEstimated) << " degrees\n";
     std::cout << "Pitch RMSE: " << Utils::rmse(pitchGroundTruth, pitchEstimated) << " degrees\n";
     std::cout << "Pitch MEA:  " << Utils::mea(pitchGroundTruth, pitchEstimated) << " degrees\n";
-
 
     Utils::printVecToFile(rollEstimated, "Results/predicted_roll_ekf.txt");
     // Utils::printVecToFile(rollTruthVector, "Results/expected_roll.txt");

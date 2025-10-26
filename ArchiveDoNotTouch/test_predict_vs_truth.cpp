@@ -1,8 +1,8 @@
 #include "ExtendedKalmanFilter.hpp"
-#include "csvreader.hpp"
 #include "Utils.hpp"
-#include <iostream>
+#include "csvreader.hpp"
 #include <iomanip>
+#include <iostream>
 
 int main()
 {
@@ -22,7 +22,7 @@ int main()
     std::cout << "\n";
 
     // Initialize EKF
-    double dt = 0.02; // 50 Hz sampling rate
+    double dt = 0.02;                                      // 50 Hz sampling rate
     Eigen::Vector4d initialQuaternion(1.0, 0.0, 0.0, 0.0); // Identity quaternion
 
     ExtendedKalmanFilter ekf(dt, initialQuaternion);
@@ -73,7 +73,7 @@ int main()
         double rollError = rollPredicted(i) - rollTruth(i);
         double pitchError = pitchPredicted(i) - pitchTruth(i);
 
-        std::cout << std::setw(4) << i+1 << " | ";
+        std::cout << std::setw(4) << i + 1 << " | ";
         std::cout << std::setw(10) << rollTruth(i) << " | ";
         std::cout << std::setw(14) << rollPredicted(i) << " | ";
         std::cout << std::setw(5) << rollError << " | ";
@@ -91,8 +91,10 @@ int main()
 
     // Final values
     std::cout << "\n=== Final Values (sample " << numSamples << ") ===\n";
-    std::cout << "Roll  - Truth: " << rollTruth(numSamples-1) << " deg, Predicted: " << rollPredicted(numSamples-1) << " deg\n";
-    std::cout << "Pitch - Truth: " << pitchTruth(numSamples-1) << " deg, Predicted: " << pitchPredicted(numSamples-1) << " deg\n";
+    std::cout << "Roll  - Truth: " << rollTruth(numSamples - 1) << " deg, Predicted: " << rollPredicted(numSamples - 1)
+              << " deg\n";
+    std::cout << "Pitch - Truth: " << pitchTruth(numSamples - 1)
+              << " deg, Predicted: " << pitchPredicted(numSamples - 1) << " deg\n";
 
     // Save results for plotting
     Utils::printVecToFile(rollPredicted, "Results/ekf_predict_roll.txt");

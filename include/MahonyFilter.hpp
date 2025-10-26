@@ -4,32 +4,31 @@
 #include "pch.h"
 
 class MahonyFilter {
-public:
+  public:
     MahonyFilter(double dt, double kp);
 
-    void setIMUData(const Eigen::MatrixXd &gyroData, const Eigen::MatrixXd &accelData);
+    void setIMUData(const Eigen::MatrixXd& gyroData, const Eigen::MatrixXd& accelData);
     void predictForAllData();
 
     const Eigen::VectorXd& getRollEstimation();
     const Eigen::VectorXd& getPitchEstimation();
     // Eigen::Vector3d getEulerAngles() const;
     // const Eigen::Matrix3d &getRHat() const;
- private:
+  private:
     double dt;
     double kp;
-    
+
     Eigen::Matrix3d rHat;
 
     // IMU Input
     Eigen::MatrixXd accelometerData;
     Eigen::MatrixXd gyroData;
-    
+
     // Prediciton
     Eigen::VectorXd rollEstimation;
     Eigen::VectorXd pitchEstimation;
 
-    void update(const Eigen::Vector3d &omega_y, const Eigen::Matrix3d &R_y);
-
+    void update(const Eigen::Vector3d& omega_y, const Eigen::Matrix3d& R_y);
 
     // TODO Check why this is needed
     void orthonormalize() {
@@ -38,10 +37,10 @@ public:
         rHat = svd.matrixU() * svd.matrixV().transpose();
 
         // Ensure det(R̂) = 1 which is a condition in the SO(3) space
-        if (rHat.determinant() < 0) {  // ← Fixed
+        if(rHat.determinant() < 0) { // ← Fixed
             Eigen::Matrix3d U = svd.matrixU();
             U.col(2) *= -1;
-            rHat = U * svd.matrixV().transpose();  // ← Fixed
+            rHat = U * svd.matrixV().transpose(); // ← Fixed
         }
     }
 };

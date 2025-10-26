@@ -1,8 +1,8 @@
 #include "ExtendedKalmanFilter.hpp"
-#include "csvreader.hpp"
 #include "Utils.hpp"
-#include <iostream>
+#include "csvreader.hpp"
 #include <iomanip>
+#include <iostream>
 
 int main()
 {
@@ -41,7 +41,7 @@ int main()
 
     // Compute roll and pitch from accelerometer
     double roll0 = atan2(firstAccel(1), firstAccel(2));
-    double pitch0 = atan2(-firstAccel(0), sqrt(firstAccel(1)*firstAccel(1) + firstAccel(2)*firstAccel(2)));
+    double pitch0 = atan2(-firstAccel(0), sqrt(firstAccel(1) * firstAccel(1) + firstAccel(2) * firstAccel(2)));
 
     // Convert to quaternion (Z-Y-X Euler angles, yaw=0)
     double cy = cos(0.0 * 0.5);
@@ -52,10 +52,10 @@ int main()
     double sr = sin(roll0 * 0.5);
 
     Eigen::Vector4d initialQuaternion;
-    initialQuaternion(0) = cr * cp * cy + sr * sp * sy;  // q0
-    initialQuaternion(1) = sr * cp * cy - cr * sp * sy;  // q1
-    initialQuaternion(2) = cr * sp * cy + sr * cp * sy;  // q2
-    initialQuaternion(3) = cr * cp * sy - sr * sp * cy;  // q3
+    initialQuaternion(0) = cr * cp * cy + sr * sp * sy; // q0
+    initialQuaternion(1) = sr * cp * cy - cr * sp * sy; // q1
+    initialQuaternion(2) = cr * sp * cy + sr * cp * sy; // q2
+    initialQuaternion(3) = cr * cp * sy - sr * sp * cy; // q3
 
     ExtendedKalmanFilter ekf(dt, initialQuaternion);
 
@@ -100,7 +100,7 @@ int main()
         rollPredicted(i) = euler(0);
         pitchPredicted(i) = euler(1);
 
-        std::cout << std::setw(4) << i+1 << " | ";
+        std::cout << std::setw(4) << i + 1 << " | ";
         std::cout << std::setw(10) << rollTruth(i) << " | ";
         std::cout << std::setw(8) << rollPredicted(i) << " | ";
         std::cout << std::setw(11) << pitchTruth(i) << " | ";

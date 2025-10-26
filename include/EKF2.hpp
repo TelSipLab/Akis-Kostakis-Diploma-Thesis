@@ -4,18 +4,23 @@
 #include "pch.h"
 
 class EKF2 {
-public:
+  public:
     // Constructor
     EKF2(double dt, const Eigen::Vector3d& initial_accel);
 
     // Main processing function
-    void processAllData(const Eigen::MatrixXd& gyro_data,
-                       const Eigen::MatrixXd& accel_data);
+    void processAllData(const Eigen::MatrixXd& gyro_data, const Eigen::MatrixXd& accel_data);
 
     // Get current state
-    Eigen::VectorXd getState() const { return x; }
-    Eigen::Vector4d getQuaternion() const { return x.head<4>(); }
-    Eigen::Vector3d getBias() const { return x.tail<3>(); }
+    Eigen::VectorXd getState() const {
+        return x;
+    }
+    Eigen::Vector4d getQuaternion() const {
+        return x.head<4>();
+    }
+    Eigen::Vector3d getBias() const {
+        return x.tail<3>();
+    }
 
     // Get roll and pitch from quaternion
     double getRoll() const;
@@ -27,7 +32,7 @@ public:
     // Update step
     void update(const Eigen::Vector3d& accel);
 
-private:
+  private:
     // State: [q0, q1, q2, q3, bx, by, bz]^T (7x1)
     Eigen::VectorXd x;
 

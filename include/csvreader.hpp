@@ -12,8 +12,7 @@
 using Eigen::MatrixXd;
 using std::vector;
 
-class CsvReader
-{
+class CsvReader {
   private:
     std::string fileName;
     char delimiter;
@@ -24,8 +23,7 @@ class CsvReader
     int rows{0};
     int cols{0};
 
-    static std::string trim(const std::string &str)
-    {
+    static std::string trim(const std::string& str) {
         size_t first = str.find_first_not_of(" \t\r\n");
         if(first == std::string::npos)
             return ""; // No content
@@ -35,38 +33,32 @@ class CsvReader
     }
 
   public:
-    CsvReader(const std::string &fileName, char delimiter = ',') : fileName(fileName), delimiter(delimiter) {}
+    CsvReader(const std::string& fileName, char delimiter = ',') : fileName(fileName), delimiter(delimiter) {}
 
-    void read()
-    {
+    void read() {
         data.clear();
         std::ifstream file(fileName);
 
-        if(!file.is_open())
-        {
+        if(!file.is_open()) {
             throw std::runtime_error("Could not open file: " + fileName);
         }
 
         std::string line;
-        while(std::getline(file, line))
-        {
+        while(std::getline(file, line)) {
             std::vector<std::string> row;
             std::stringstream ss(line);
             std::string value;
 
-            while(std::getline(ss, value, delimiter))
-            {
+            while(std::getline(ss, value, delimiter)) {
                 value = trim(value);
                 // std::cout << "Value read: [" << value << "]" << std::endl;
                 row.push_back(value);
             }
 
-            if(!row.empty())
-            { // Only add non-empty rows
+            if(!row.empty()) { // Only add non-empty rows
                 data.push_back(row);
                 rows++;
-                if(cols == 0)
-                { // No need to re-check
+                if(cols == 0) { // No need to re-check
                     cols = static_cast<int>(row.size());
                 }
             }
@@ -77,73 +69,58 @@ class CsvReader
         // Now allocate and fill Eigen matrix
         eigenData = MatrixXd(rows, cols);
 
-        for(int i = 0; i < rows; ++i)
-        {
-            if(data[i].size() != cols)
-            {
+        for(int i = 0; i < rows; ++i) {
+            if(data[i].size() != cols) {
                 throw std::runtime_error("Inconsistent number of columns in row " + std::to_string(i));
             }
-            for(int j = 0; j < cols; ++j)
-            {
+            for(int j = 0; j < cols; ++j) {
                 eigenData(i, j) = std::stod(data[i][j]);
             }
         }
     }
 
-    void printData() const
-    {
-        if(data.empty())
-        {
+    void printData() const {
+        if(data.empty()) {
             std::cout << "No data to print." << std::endl;
             return;
         }
 
-        for(size_t i = 0; i < data.size(); ++i)
-        {
+        for(size_t i = 0; i < data.size(); ++i) {
             std::cout << "Row " << i + 1 << ": ";
-            for(size_t j = 0; j < data[i].size(); ++j)
-            {
+            for(size_t j = 0; j < data[i].size(); ++j) {
                 std::cout << "[" << data[i][j] << "] ";
             }
             std::cout << std::endl;
         }
     }
 
-    void printStats() const
-    {
+    void printStats() const {
         printf("%s rows: %d Cols: %d (%dx%d)\n", fileName.c_str(), rows, cols, rows, cols);
     }
 
-    void peek() const
-    {
-        for(int i = 0; i < 10; i++)
-        {
+    void peek() const {
+        for(int i = 0; i < 10; i++) {
             std::cout << eigenData.row(i) << std::endl;
         }
     }
 
-    const vector<vector<std::string>> &getData() const
-    {
+    const vector<vector<std::string>>& getData() const {
         return data;
     }
 
-    MatrixXd getEigenData() const
-    { // Give a copy
+    MatrixXd getEigenData() const { // Give a copy
         return eigenData;
     }
 
-    MatrixXd &getEigenData()
-    { // Give a reference
+    MatrixXd& getEigenData() { // Give a reference
         return eigenData;
     }
 
-    unsigned long getRows() const
-    {
+    unsigned long getRows() const {
         return rows;
     }
 
-    unsigned long getCols() const
-    {
+    unsigned long getCols() const {
         return cols;
     }
 };
