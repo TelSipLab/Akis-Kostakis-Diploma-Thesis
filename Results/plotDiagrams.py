@@ -2,10 +2,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Define file names
-rollPredicted = 'Results/predicted_roll_ekf.txt'
-rollReal = 'Results/expected_roll.txt'
+rollPredicted = 'Results/predicted_roll_mahony_50.txt'
+rollReal = 'Results/expected_roll.txt' # DONT CHANGE
 
-rmse = 0.29 # either by cpp code or we can calculate from python
+rmse = 1.82 # either by cpp code or we can calculate from python
 
 # Read data from files
 rollData = np.loadtxt(rollPredicted)
@@ -19,7 +19,7 @@ plt.plot(rollReal, label='Expected Roll', linestyle='--', linewidth=1, markersiz
 # Add labels, title, and grid
 plt.xlabel('Time')
 plt.ylabel('Degrees')
-plt.title("Actual roll vs the EKF estimation")
+plt.title("Actual roll vs Mahony Estimation")
 plt.legend()
 plt.grid(True)
 
@@ -40,4 +40,5 @@ plt.tight_layout()
 # Show the plot
 # plt.show()
 
-plt.savefig("Results/Figures/RollRMSE_EKF.png")
+plt.savefig("Results/Figures/RollRMSE_Mahony.png")
+print(f"Plot saved")

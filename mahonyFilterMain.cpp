@@ -2,14 +2,17 @@
 #include "Utils.hpp"
 #include "csvreader.hpp"
 
+#include <algorithm>
 #include <iomanip>
 #include <iostream>
 
 int main() {
     std::cout << std::fixed << std::setprecision(6);
 
+    bool calculateBestK = false;
+
     const double dt = 0.02;
-    const double kp = 50.0; // Increased gain for faster correction
+    const double kp = 9; // Increased gain for faster correction
     const int DISPLAY_SAMPLES = 10;
 
     // Load data
@@ -31,18 +34,41 @@ int main() {
     Utils::convertToDeg(rollGroundTruth);
     Utils::convertToDeg(pitchGroundTruth);
 
-    // Initialize Mahony filter
-    MahonyFilter mahony(dt, kp);
-
-    std::cout << "Mahony Passive Complementary Filter Test\n\n";
 
     const int numSamples = static_cast<int>(gyroMeasurements.rows());
-    std::cout << "Dataset: " << numSamples << " samples\n";
-    std::cout << "Time step (dt): " << dt << " seconds\n";
-    std::cout << "Proportional gain (kP): " << kp << "\n\n";
-
+    MahonyFilter mahony(dt, kp);
     mahony.setIMUData(gyroMeasurements, accelMeasurements);
-    mahony.predictForAllData();
+
+    if(calculateBestK) {
+        double bestK=1;
+        double bestRMSE = 100.00;
+
+        for(int i=1; i < 101; i++) {
+            MahonyFilter mahonyTmp(dt, i);
+            mahonyTmp.setIMUData(gyroMeasurements, accelMeasurements);
+
+            mahonyTmp.predictForAllData();
+            double tmpBetRmse = Utils::rmse(rollGroundTruth, mahonyTmp.getRollEstimation());
+
+            if (tmpBetRmse < bestRMSE) {
+                bestRMSE = tmpBetRmse;
+                bestK = i;
+            }
+        }
+
+        std::cout << "Best K " << bestK << " and best RMSE " << bestRMSE << std::endl;
+
+    } else {
+        // Initialize Mahony filter
+
+        std::cout << "Mahony Passive Complementary Filter Test\n\n";
+
+        std::cout << "Dataset: " << numSamples << " samples\n";
+        std::cout << "Time step (dt): " << dt << " seconds\n";
+        std::cout << "Proportional gain (kP): " << kp << "\n\n";
+
+        mahony.predictForAllData();
+    }
 
     std::cout << "\n=== Error Metrics (all " << numSamples << " samples) ===\n";
     std::cout << "Roll RMSE:  " << Utils::rmse(rollGroundTruth, mahony.getRollEstimation()) << " degrees\n";
@@ -55,4 +81,8 @@ int main() {
 
 
     return 0;
+}
+
+void calculateBestK() {
+
 }

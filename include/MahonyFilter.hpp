@@ -37,10 +37,10 @@ class MahonyFilter {
         rHat = svd.matrixU() * svd.matrixV().transpose();
 
         // Ensure det(R̂) = 1 which is a condition in the SO(3) space
-        if(rHat.determinant() < 0) { // ← Fixed
+        if(rHat.determinant() < 0) { // Fixed
             Eigen::Matrix3d U = svd.matrixU();
             U.col(2) *= -1;
-            rHat = U * svd.matrixV().transpose(); // ← Fixed
+            rHat = U * svd.matrixV().transpose(); // Fixed
         }
     }
 };

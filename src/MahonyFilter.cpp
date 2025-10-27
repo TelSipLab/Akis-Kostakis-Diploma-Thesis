@@ -28,26 +28,20 @@ void MahonyFilter::predictForAllData() {
         // Normalize accelerometer reading
         Eigen::Vector3d accelNormalized = accelReading.normalized();
 
-        double rollFromSenor = Utils::calculateRollFromAccelInput(accelNormalized.y(), accelNormalized.z());
+        double rollFromSenor = Utils::calculateEulerRollFromSensor(accelNormalized.y(), accelNormalized.z());
         double pitchFromSensor =
-            Utils::calculatePitchFromAccelInput(accelNormalized.x(), accelNormalized.y(), accelNormalized.z());
+            Utils::calculateEulerPitchFromInput(accelNormalized.x(), accelNormalized.y(), accelNormalized.z());
 
         // Rotation Matrix
-        // TODO Check what Eigen does behind the scenes
-        Eigen::Matrix3d R_y = (Eigen::AngleAxisd(0.0, Eigen::Vector3d::UnitZ()) *
-                               Eigen::AngleAxisd(pitchFromSensor, Eigen::Vector3d::UnitY()) *
-                               Eigen::AngleAxisd(rollFromSenor, Eigen::Vector3d::UnitX()))
-                                  .toRotationMatrix();
-
+        Eigen::Matrix3d R_y = Utils::rotationMatrixFromRollPitch(rollFromSenor, pitchFromSensor);
         update(gyroReading, R_y);
 
         // Extract roll and pitch from rotation matrix R̂
         // For ZYX Euler: roll = atan2(R32, R33), pitch = atan2(-R31, sqrt(R32² + R33²))
-
-        double rollEst = Utils::calculateRollFromAccelInput(rHat(2, 1), rHat(2, 2)) * 180.0 / M_PI;
+        double rollEst = Utils::calculateEulerRollFromSensor(rHat(2, 1), rHat(2, 2)) * 180.0 / M_PI;
         rollEstimation(i) = rollEst;
 
-        double pitchEst = Utils::calculatePitchFromAccelInput(rHat(2, 0), rHat(2, 1), rHat(2, 2)) * 180.0 / M_PI;
+        double pitchEst = Utils::calculateEulerPitchFromInput(rHat(2, 0), rHat(2, 1), rHat(2, 2)) * 180.0 / M_PI;
         pitchEstimation(i) = pitchEst;
     }
 }

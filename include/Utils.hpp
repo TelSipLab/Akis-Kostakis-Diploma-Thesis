@@ -69,14 +69,27 @@ class Utils {
     }
 
     // Equation from (Complementary_Filter_Introduction.pdf)
-    static double calculateRollFromAccelInput(double ay, double az) {
+    static double calculateEulerRollFromSensor(double ay, double az) {
         return std::atan2(ay, az);
     }
 
     // Equation from (Complementary_Filter_Introduction.pdf)
-    static double calculatePitchFromAccelInput(double ax, double ay, double az) {
+    static double calculateEulerPitchFromInput(double ax, double ay, double az) {
         double tmp = std::sqrt(ay * ay + az * az);
         return std::atan2(-ax, tmp);
+    }
+
+    static Eigen::Matrix3d rotationMatrixFromRollPitch(double roll, double pitch) {
+        double c_phi = std::cos(roll);
+        double s_phi = std::sin(roll);
+        double c_theta = std::cos(pitch);
+        double s_theta = std::sin(pitch);
+
+        Eigen::Matrix3d R;
+        R <<  c_theta,     s_theta * s_phi,   s_theta * c_phi,
+            0,           c_phi,             -s_phi,
+            -s_theta,     c_theta * s_phi,   c_theta * c_phi;
+        return R;
     }
 };
 
