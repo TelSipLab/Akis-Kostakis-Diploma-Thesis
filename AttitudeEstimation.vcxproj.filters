@@ -18,9 +18,6 @@
     <ClCompile Include="src\ComplementaryFilter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\ExtendedKalmanFilter.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\EKF2.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -39,9 +36,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\ComplementaryFilter.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\ExtendedKalmanFilter.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\EKF2.hpp">
@@ -64,5 +58,7 @@
     <None Include="Makefile" />
     <None Include="README.md" />
     <None Include=".gitignore" />
+    <None Include=".clang-format" />
+    <None Include="CLAUDE.md" />
   </ItemGroup>
 </Project>
