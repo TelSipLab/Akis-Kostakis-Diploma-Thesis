@@ -1,6 +1,6 @@
-#include "EKF2.hpp"
+#include "ExtendedKalmanFilter.hpp"
 #include "Utils.hpp"
-#include "csvreader.hpp"
+#include "CsvReader.hpp"
 
 #include <iomanip>
 #include <iostream>
@@ -31,7 +31,7 @@ int main() {
     Eigen::Vector3d initialAccel = accelMeasurements.row(0).transpose();
     initialAccel(0) = -initialAccel(0);
 
-    EKF2 ekf(dt, initialAccel);
+    ExtendedKalmanFilter ekf(dt, initialAccel);
 
     std::cout << "EKF2 Initialized with Real IMU Data\n\n";
 

@@ -1,12 +1,12 @@
-#ifndef EKF2_HPP
-#define EKF2_HPP
+#ifndef EXTENDEDKALMANFILTER_HPP
+#define EXTENDEDKALMANFILTER_HPP
 
 #include "pch.h"
 
-class EKF2 {
+class ExtendedKalmanFilter {
   public:
     // Constructor
-    EKF2(double dt, const Eigen::Vector3d& initial_accel);
+    ExtendedKalmanFilter(double dt, const Eigen::Vector3d& initial_accel);
 
     // Main processing function
     void processAllData(const Eigen::MatrixXd& gyro_data, const Eigen::MatrixXd& accel_data);
@@ -57,4 +57,4 @@ class EKF2 {
     Eigen::MatrixXd computeH() const;
 };
 
-#endif // EKF2_HPP
+#endif // EXTENDEDKALMANFILTER_HPP

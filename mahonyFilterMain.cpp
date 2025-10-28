@@ -82,6 +82,5 @@ int main() {
     Utils::printVecToFile(mahony.getRollEstimation(), "Results/predicted_roll_mahony_9.txt");
     Utils::printVecToFile(mahony.getPitchEstimation(), "Results/predicted_pitch_mahony_9.txt");
 
-
     return 0;
 }

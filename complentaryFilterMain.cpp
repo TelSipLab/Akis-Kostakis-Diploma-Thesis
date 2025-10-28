@@ -2,54 +2,93 @@
 #include "Utils.hpp"
 #include "csvreader.hpp"
 
-int main() {
-    std::cout.precision(10);
+#include <iomanip>
+#include <iostream>
 
+int main() {
+    std::cout << std::fixed << std::setprecision(6);
+
+    bool calculateBestAlpha = false;
+
+    const double dt = 0.02;
+    const double alpha = 0.79; // Calculated via loop
+    const int DISPLAY_SAMPLES = 10;
+
+    // Load data
     CsvReader gyroData("Data/gyro.csv");
     gyroData.read();
-    gyroData.printStats();
+    Eigen::MatrixXd gyroMeasurements = gyroData.getEigenData();
 
     CsvReader accelData("Data/accel.csv");
     accelData.read();
-    accelData.printStats();
+    Eigen::MatrixXd accelMeasurements = accelData.getEigenData();
 
     CsvReader anglesResults("Data/angles.csv");
     anglesResults.read();
-    anglesResults.printStats();
+    Eigen::MatrixXd groundTruthAngles = anglesResults.getEigenData();
 
-    double alpha = 0.8;
-    double dt = 0.02;
+    // Ground truth is in radian convert to degrees
+    Eigen::VectorXd rollGroundTruth = Utils::getVectorFromMatrix(groundTruthAngles, 0);
+    Eigen::VectorXd pitchGroundTruth = Utils::getVectorFromMatrix(groundTruthAngles, 1);
+    Utils::convertToDeg(rollGroundTruth);
+    Utils::convertToDeg(pitchGroundTruth);
+
+    const int numSamples = static_cast<int>(gyroMeasurements.rows());
     ComplementaryFilter filter(alpha, dt);
-    filter.setGyroData(gyroData.getEigenData());
-    filter.setAccelData(accelData.getEigenData());
-    filter.calculateRoll();
-    filter.calculatePitch();
+    filter.setIMUData(gyroMeasurements, accelMeasurements);
 
+    if(calculateBestAlpha) {
+        double bestAlpha = 0.5;
+        double bestRMSE = 100.00;
+
+        // Loop from 0.01 to 0.99 with step 0.01
+        for(int i = 1; i < 100; i++) {
+            double currentAlpha = i * 0.01;
+            ComplementaryFilter filterTmp(currentAlpha, dt);
+            filterTmp.setIMUData(gyroMeasurements, accelMeasurements);
+
+            filterTmp.calculateRoll();
+            filterTmp.calculatePitch();
+
+            auto rollTmp = filterTmp.getRoll();
+            Utils::convertToDeg(rollTmp);
+
+            double tmpBestRmse = Utils::rmse(rollGroundTruth, rollTmp);
+
+            if (tmpBestRmse < bestRMSE) {
+                bestRMSE = tmpBestRmse;
+                bestAlpha = currentAlpha;
+            }
+        }
+
+        std::cout << "Best Alpha: " << bestAlpha << " with best RMSE: " << bestRMSE << " degrees" << std::endl;
+
+    } else {
+        std::cout << "Complementary Filter Test\n\n";
+
+        std::cout << "Dataset: " << numSamples << " samples\n";
+        std::cout << "Time step (dt): " << dt << " seconds\n";
+        std::cout << "Alpha coefficient: " << alpha << "\n\n";
+
+        filter.calculateRoll();
+        filter.calculatePitch();
+    }
+
+    // Convert results to degrees
     auto& roll = filter.getRoll(); // Results are in RAD
     Utils::convertToDeg(roll);     // Now results are in Degree
-    Utils::printVec(roll);
 
     auto& pitch = filter.getPitch(); // Results are in RAD
     Utils::convertToDeg(pitch);      // Now results are in Degree
 
-    // File contains RAD
-    Eigen::VectorXd rollTruthVector = Utils::getVectorFromMatrix(anglesResults.getEigenData(), 0);
-    Eigen::VectorXd pitchTruthVector = Utils::getVectorFromMatrix(anglesResults.getEigenData(), 1);
-
-    Utils::convertToDeg(rollTruthVector);  // Now in Degrees
-    Utils::convertToDeg(pitchTruthVector); // Now in Degrees
-
-    std::cout << "\n=== Error Metrics (all samples) ===\n";
-    std::cout << "Roll RMSE:  " << Utils::rmse(rollTruthVector, roll) << " degrees\n";
-    std::cout << "Roll MEA:   " << Utils::mea(rollTruthVector, roll) << " degrees\n";
-    std::cout << "Pitch RMSE: " << Utils::rmse(pitchTruthVector, pitch) << " degrees\n";
-    std::cout << "Pitch MEA:  " << Utils::mea(pitchTruthVector, pitch) << " degrees\n";
+    std::cout << "\n=== Error Metrics (all " << numSamples << " samples) in degrees ===\n";
+    std::cout << "Roll RMSE:  " << Utils::rmse(rollGroundTruth, roll) << " degrees\n";
+    std::cout << "Roll MEA:   " << Utils::mea(rollGroundTruth, roll) << " degrees\n";
+    std::cout << "Pitch RMSE: " << Utils::rmse(pitchGroundTruth, pitch) << " degrees\n";
+    std::cout << "Pitch MEA:  " << Utils::mea(pitchGroundTruth, pitch) << " degrees\n";
 
     Utils::printVecToFile(roll, "Results/predicted_roll_complementary.txt");
-    // Utils::printVecToFile(rollTruthVector, "Results/expected_roll.txt");
-
     Utils::printVecToFile(pitch, "Results/predicted_pitch_complementary.txt");
-    // Utils::printVecToFile(pitchTruthVector, "Results/expected_pitch.txt");
 
     return 0;
 }

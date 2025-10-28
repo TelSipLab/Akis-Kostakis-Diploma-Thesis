@@ -90,13 +90,13 @@
   <ItemGroup>
     <ClCompile Include="mahonyFilterMain.cpp" />
     <ClCompile Include="src\ComplementaryFilter.cpp" />
-    <ClCompile Include="src\EKF2.cpp" />
+    <ClCompile Include="src\ExtendedKalmanFilter.cpp" />
     <ClCompile Include="src\MahonyFilter.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\ComplementaryFilter.hpp" />
-    <ClInclude Include="include\csvreader.hpp" />
-    <ClInclude Include="include\EKF2.hpp" />
+    <ClInclude Include="include\CsvReader.hpp" />
+    <ClInclude Include="include\ExtendedKalmanFilter.hpp" />
     <ClInclude Include="include\MahonyFilter.hpp" />
     <ClInclude Include="include\pch.h" />
     <ClInclude Include="include\Utils.hpp" />

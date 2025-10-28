@@ -10,19 +10,18 @@ class ComplementaryFilter {
 
     ComplementaryFilter(double alphaC, double dt);
 
-    void setAccelData(const Eigen::MatrixXd& data);
-    void setGyroData(const Eigen::MatrixXd& data);
+    void setIMUData(const Eigen::MatrixXd& gyroData, const Eigen::MatrixXd accelData);
 
     inline const Eigen::VectorXd& getRoll() const {
-        return roll;
+        return rollEstimation;
     }
 
     inline Eigen::VectorXd& getRoll() {
-        return roll;
+        return rollEstimation;
     }
 
     inline Eigen::VectorXd& getPitch() {
-        return pitch;
+        return pitchEstimation;
     }
 
     void calculateRoll();
@@ -42,8 +41,8 @@ class ComplementaryFilter {
     Eigen::VectorXd thetaA;
 
     // Predictions
-    Eigen::VectorXd roll;
-    Eigen::VectorXd pitch;
+    Eigen::VectorXd rollEstimation;
+    Eigen::VectorXd pitchEstimation;
 };
 
 #endif // COMPLEMENTARY_FILTER_HPP

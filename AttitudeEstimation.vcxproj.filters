@@ -18,7 +18,7 @@
     <ClCompile Include="src\ComplementaryFilter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\EKF2.cpp">
+    <ClCompile Include="src\ExtendedKalmanFilter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\MahonyFilter.cpp">
@@ -32,7 +32,7 @@
     <ClInclude Include="include\ComplementaryFilter.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\EKF2.hpp">
+    <ClInclude Include="include\ExtendedKalmanFilter.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\MahonyFilter.hpp">
@@ -41,7 +41,7 @@
     <ClInclude Include="include\Utils.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\csvreader.hpp">
+    <ClInclude Include="include\CsvReader.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\pch.h">

@@ -1,6 +1,6 @@
-#include "EKF2.hpp"
+#include "ExtendedKalmanFilter.hpp"
 
-EKF2::EKF2(double dt, const Eigen::Vector3d& initial_accel) : dt(dt) {
+ExtendedKalmanFilter::ExtendedKalmanFilter(double dt, const Eigen::Vector3d& initial_accel) : dt(dt) {
     // Initialize state vector (7x1)
     x = Eigen::VectorXd::Zero(7);
 
@@ -37,7 +37,7 @@ EKF2::EKF2(double dt, const Eigen::Vector3d& initial_accel) : dt(dt) {
     R = Eigen::MatrixXd::Identity(3, 3) * 0.1;
 }
 
-void EKF2::predict(const Eigen::Vector3d& gyro) {
+void ExtendedKalmanFilter::predict(const Eigen::Vector3d& gyro) {
     // Extract current state
     Eigen::Vector4d q = x.head(4);
     Eigen::Vector3d bias = x.tail(3);
@@ -64,7 +64,7 @@ void EKF2::predict(const Eigen::Vector3d& gyro) {
     P = F * P * F.transpose() + Q;
 }
 
-void EKF2::update(const Eigen::Vector3d& accel) {
+void ExtendedKalmanFilter::update(const Eigen::Vector3d& accel) {
     // Expected measurement (gravity in body frame)
     Eigen::Vector4d q = x.head<4>();
     Eigen::Matrix3d R_mat = quaternionToRotationMatrix(q);
@@ -99,7 +99,7 @@ void EKF2::update(const Eigen::Vector3d& accel) {
     P = (I - K * H) * P;
 }
 
-void EKF2::processAllData(const Eigen::MatrixXd& gyro_data, const Eigen::MatrixXd& accel_data) {
+void ExtendedKalmanFilter::processAllData(const Eigen::MatrixXd& gyro_data, const Eigen::MatrixXd& accel_data) {
     int n_samples = static_cast<int>(gyro_data.rows());
 
     for(int i = 0; i < n_samples; ++i) {
@@ -114,14 +114,14 @@ void EKF2::processAllData(const Eigen::MatrixXd& gyro_data, const Eigen::MatrixX
     }
 }
 
-double EKF2::getRoll() const {
+double ExtendedKalmanFilter::getRoll() const {
     Eigen::Vector4d q = x.head<4>();
     double q0 = q(0), q1 = q(1), q2 = q(2), q3 = q(3);
 
     return std::atan2(2 * (q0 * q1 + q2 * q3), 1 - 2 * (q1 * q1 + q2 * q2));
 }
 
-double EKF2::getPitch() const {
+double ExtendedKalmanFilter::getPitch() const {
     Eigen::Vector4d q = x.head<4>();
     double q0 = q(0), q1 = q(1), q2 = q(2), q3 = q(3);
 
@@ -135,12 +135,12 @@ double EKF2::getPitch() const {
     }
 }
 
-void EKF2::normalizeQuaternion() {
+void ExtendedKalmanFilter::normalizeQuaternion() {
     Eigen::Vector4d q = x.head<4>();
     x.head<4>() = q / q.norm();
 }
 
-Eigen::Matrix3d EKF2::quaternionToRotationMatrix(const Eigen::Vector4d& q) const {
+Eigen::Matrix3d ExtendedKalmanFilter::quaternionToRotationMatrix(const Eigen::Vector4d& q) const {
     double q0 = q(0), q1 = q(1), q2 = q(2), q3 = q(3);
 
     Eigen::Matrix3d R;
@@ -151,7 +151,7 @@ Eigen::Matrix3d EKF2::quaternionToRotationMatrix(const Eigen::Vector4d& q) const
     return R;
 }
 
-Eigen::MatrixXd EKF2::computeF(const Eigen::Vector3d& w) const {
+Eigen::MatrixXd ExtendedKalmanFilter::computeF(const Eigen::Vector3d& w) const {
     // State transition Jacobian (7x7)
     Eigen::MatrixXd F = Eigen::MatrixXd::Identity(7, 7);
 
@@ -179,7 +179,7 @@ Eigen::MatrixXd EKF2::computeF(const Eigen::Vector3d& w) const {
     return F;
 }
 
-Eigen::MatrixXd EKF2::computeH() const {
+Eigen::MatrixXd ExtendedKalmanFilter::computeH() const {
     // Measurement Jacobian (3x7)
     Eigen::MatrixXd H = Eigen::MatrixXd::Zero(3, 7);
 
