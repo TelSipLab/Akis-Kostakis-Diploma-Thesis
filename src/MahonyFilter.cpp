@@ -12,7 +12,7 @@ void MahonyFilter::setIMUData(const Eigen::MatrixXd& gyroData, const Eigen::Matr
         exit(-1);
     }
 
-    int numSamples = gyroData.rows();
+    int numSamples = static_cast<int>(gyroData.rows());
     rollEstimation.resize(numSamples);
     pitchEstimation.resize(numSamples);
     rollEstimation.setZero();
@@ -38,19 +38,27 @@ void MahonyFilter::predictForAllData() {
 
         // Extract roll and pitch from rotation matrix R̂
         // For ZYX Euler: roll = atan2(R32, R33), pitch = atan2(-R31, sqrt(R32² + R33²))
-        double rollEst = Utils::calculateEulerRollFromSensor(rHat(2, 1), rHat(2, 2)) * 180.0 / M_PI;
-        rollEstimation(i) = rollEst;
+        double rollEstRad = Utils::calculateEulerRollFromSensor(rHat(2, 1), rHat(2, 2));
+        rollEstimation(i) = rollEstRad;
 
-        double pitchEst = Utils::calculateEulerPitchFromInput(rHat(2, 0), rHat(2, 1), rHat(2, 2)) * 180.0 / M_PI;
-        pitchEstimation(i) = pitchEst;
+        double pitchEstRad = Utils::calculateEulerPitchFromInput(rHat(2, 0), rHat(2, 1), rHat(2, 2));
+        pitchEstimation(i) = pitchEstRad;
     }
 }
 
-const Eigen::VectorXd& MahonyFilter::getRollEstimation() {
+const Eigen::VectorXd& MahonyFilter::getRollEstimation() const {
     return rollEstimation;
 }
 
-const Eigen::VectorXd& MahonyFilter::getPitchEstimation() {
+Eigen::VectorXd& MahonyFilter::getRollEstimationNonConst() {
+    return rollEstimation;
+}
+
+const Eigen::VectorXd& MahonyFilter::getPitchEstimation() const {
+    return pitchEstimation;
+}
+
+Eigen::VectorXd& MahonyFilter::getPitchEstimationNonConst() {
     return pitchEstimation;
 }
 

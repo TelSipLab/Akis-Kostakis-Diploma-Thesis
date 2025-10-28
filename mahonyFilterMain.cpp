@@ -68,7 +68,12 @@ int main() {
         mahony.predictForAllData();
     }
 
-    std::cout << "\n=== Error Metrics (all " << numSamples << " samples) ===\n";
+    // Conver results to degrees
+    Utils::convertToDeg(mahony.getRollEstimationNonConst());
+    Utils::convertToDeg(mahony.getPitchEstimationNonConst());
+
+
+    std::cout << "\n=== Error Metrics (all " << numSamples << " samples) in degrees ===\n";
     std::cout << "Roll RMSE:  " << Utils::rmse(rollGroundTruth, mahony.getRollEstimation()) << " degrees\n";
     std::cout << "Roll MEA:   " << Utils::mea(rollGroundTruth, mahony.getRollEstimation()) << " degrees\n";
     std::cout << "Pitch RMSE: " << Utils::rmse(pitchGroundTruth, mahony.getPitchEstimation()) << " degrees\n";

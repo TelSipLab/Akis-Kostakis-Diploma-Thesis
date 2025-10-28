@@ -10,10 +10,11 @@ class MahonyFilter {
     void setIMUData(const Eigen::MatrixXd& gyroData, const Eigen::MatrixXd& accelData);
     void predictForAllData();
 
-    const Eigen::VectorXd& getRollEstimation();
-    const Eigen::VectorXd& getPitchEstimation();
-    // Eigen::Vector3d getEulerAngles() const;
-    // const Eigen::Matrix3d &getRHat() const;
+    const Eigen::VectorXd& getRollEstimation() const;
+    Eigen::VectorXd& getRollEstimationNonConst();
+
+    const Eigen::VectorXd& getPitchEstimation() const;
+    Eigen::VectorXd& getPitchEstimationNonConst();
   private:
     double dt;
     double kp;
@@ -24,7 +25,7 @@ class MahonyFilter {
     Eigen::MatrixXd accelometerData;
     Eigen::MatrixXd gyroData;
 
-    // Prediciton
+    // Predicitons - In rad (based on input)
     Eigen::VectorXd rollEstimation;
     Eigen::VectorXd pitchEstimation;
 
