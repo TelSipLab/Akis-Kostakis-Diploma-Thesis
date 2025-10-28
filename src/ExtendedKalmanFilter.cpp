@@ -99,29 +99,64 @@ void ExtendedKalmanFilter::update(const Eigen::Vector3d& accel) {
     P = (I - K * H) * P;
 }
 
-void ExtendedKalmanFilter::processAllData(const Eigen::MatrixXd& gyro_data, const Eigen::MatrixXd& accel_data) {
-    int n_samples = static_cast<int>(gyro_data.rows());
+void ExtendedKalmanFilter::setIMUData(const Eigen::MatrixXd& gyroData, const Eigen::MatrixXd& accelData) {
+    this->gyroData = gyroData;
+    this->accelometerData = accelData;
 
-    for(int i = 0; i < n_samples; ++i) {
-        Eigen::Vector3d gyro = gyro_data.row(i);
-        Eigen::Vector3d accel = accel_data.row(i);
+    if(gyroData.rows() != accelData.rows()) {
+        std::cout << "Wrong data\n";
+        exit(-1);
+    }
+
+    int numSamples = static_cast<int>(gyroData.rows());
+    rollEstimation.resize(numSamples);
+    pitchEstimation.resize(numSamples);
+    rollEstimation.setZero();
+    pitchEstimation.setZero();
+}
+
+void ExtendedKalmanFilter::predictForAllData() {
+    for(int i = 0; i < gyroData.rows(); i++) {
+        Eigen::Vector3d gyroReading = gyroData.row(i).transpose();
+        Eigen::Vector3d accelReading = accelometerData.row(i).transpose();
+        accelReading(0) = -accelReading(0); // Sign correction
 
         // Prediction step
-        predict(gyro);
+        predict(gyroReading);
 
         // Update step
-        update(accel);
+        update(accelReading);
+
+        // Extract roll and pitch from current quaternion state
+        rollEstimation(i) = getRollFromQuaternion();
+        pitchEstimation(i) = getPitchFromQuaternion();
     }
 }
 
-double ExtendedKalmanFilter::getRoll() const {
+const Eigen::VectorXd& ExtendedKalmanFilter::getRollEstimation() const {
+    return rollEstimation;
+}
+
+Eigen::VectorXd& ExtendedKalmanFilter::getRollEstimationNonConst() {
+    return rollEstimation;
+}
+
+const Eigen::VectorXd& ExtendedKalmanFilter::getPitchEstimation() const {
+    return pitchEstimation;
+}
+
+Eigen::VectorXd& ExtendedKalmanFilter::getPitchEstimationNonConst() {
+    return pitchEstimation;
+}
+
+double ExtendedKalmanFilter::getRollFromQuaternion() const {
     Eigen::Vector4d q = x.head<4>();
     double q0 = q(0), q1 = q(1), q2 = q(2), q3 = q(3);
 
     return std::atan2(2 * (q0 * q1 + q2 * q3), 1 - 2 * (q1 * q1 + q2 * q2));
 }
 
-double ExtendedKalmanFilter::getPitch() const {
+double ExtendedKalmanFilter::getPitchFromQuaternion() const {
     Eigen::Vector4d q = x.head<4>();
     double q0 = q(0), q1 = q(1), q2 = q(2), q3 = q(3);
 

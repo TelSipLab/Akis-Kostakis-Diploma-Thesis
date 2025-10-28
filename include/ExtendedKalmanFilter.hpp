@@ -8,8 +8,18 @@ class ExtendedKalmanFilter {
     // Constructor
     ExtendedKalmanFilter(double dt, const Eigen::Vector3d& initial_accel);
 
-    // Main processing function
-    void processAllData(const Eigen::MatrixXd& gyro_data, const Eigen::MatrixXd& accel_data);
+    // Set IMU data (matches MahonyFilter pattern)
+    void setIMUData(const Eigen::MatrixXd& gyroData, const Eigen::MatrixXd& accelData);
+
+    // Main processing function (matches MahonyFilter pattern)
+    void predictForAllData();
+
+    // Get estimations (matches MahonyFilter pattern)
+    const Eigen::VectorXd& getRollEstimation() const;
+    Eigen::VectorXd& getRollEstimationNonConst();
+
+    const Eigen::VectorXd& getPitchEstimation() const;
+    Eigen::VectorXd& getPitchEstimationNonConst();
 
     // Get current state
     Eigen::VectorXd getState() const {
@@ -21,16 +31,6 @@ class ExtendedKalmanFilter {
     Eigen::Vector3d getBias() const {
         return x.tail<3>();
     }
-
-    // Get roll and pitch from quaternion
-    double getRoll() const;
-    double getPitch() const;
-
-    // Prediction step
-    void predict(const Eigen::Vector3d& gyro);
-
-    // Update step
-    void update(const Eigen::Vector3d& accel);
 
   private:
     // State: [q0, q1, q2, q3, bx, by, bz]^T (7x1)
@@ -47,6 +47,24 @@ class ExtendedKalmanFilter {
 
     // Time step
     double dt;
+
+    // IMU Input (matches MahonyFilter pattern)
+    Eigen::MatrixXd gyroData;
+    Eigen::MatrixXd accelometerData;
+
+    // Predictions - In rad (matches MahonyFilter pattern)
+    Eigen::VectorXd rollEstimation;
+    Eigen::VectorXd pitchEstimation;
+
+    // Prediction step
+    void predict(const Eigen::Vector3d& gyro);
+
+    // Update step
+    void update(const Eigen::Vector3d& accel);
+
+    // Get roll and pitch from current quaternion state
+    double getRollFromQuaternion() const;
+    double getPitchFromQuaternion() const;
 
     // Quaternion utilities
     void normalizeQuaternion();

@@ -1,6 +1,6 @@
 #include "ExtendedKalmanFilter.hpp"
 #include "Utils.hpp"
-#include "CsvReader.hpp"
+#include "csvreader.hpp"
 
 #include <iomanip>
 #include <iostream>
@@ -11,6 +11,7 @@ int main() {
     const double dt = 0.02;
     const int DISPLAY_SAMPLES = 10;
 
+    // Load data
     CsvReader gyroData("Data/gyro.csv");
     gyroData.read();
     Eigen::MatrixXd gyroMeasurements = gyroData.getEigenData();
@@ -23,62 +24,40 @@ int main() {
     anglesData.read();
     Eigen::MatrixXd groundTruthAngles = anglesData.getEigenData();
 
+    // Ground truth (convert from radians to degrees)
     Eigen::VectorXd rollGroundTruth = Utils::getVectorFromMatrix(groundTruthAngles, 0);
     Eigen::VectorXd pitchGroundTruth = Utils::getVectorFromMatrix(groundTruthAngles, 1);
     Utils::convertToDeg(rollGroundTruth);
     Utils::convertToDeg(pitchGroundTruth);
 
+    // Initialize EKF with initial accelerometer reading
     Eigen::Vector3d initialAccel = accelMeasurements.row(0).transpose();
     initialAccel(0) = -initialAccel(0);
 
-    ExtendedKalmanFilter ekf(dt, initialAccel);
-
-    std::cout << "EKF2 Initialized with Real IMU Data\n\n";
-
     const int numSamples = static_cast<int>(gyroMeasurements.rows());
+    ExtendedKalmanFilter ekf(dt, initialAccel);
+    ekf.setIMUData(gyroMeasurements, accelMeasurements);
+
+    std::cout << "Extended Kalman Filter Test\n\n";
 
     std::cout << "Dataset: " << numSamples << " samples\n";
-    std::cout << "Initial Quaternion: " << ekf.getQuaternion().transpose() << "\n";
-    std::cout << "Initial Roll (deg): " << ekf.getRoll() * 180.0 / M_PI << "\n";
-    std::cout << "Initial Pitch (deg): " << ekf.getPitch() * 180.0 / M_PI << "\n\n";
+    std::cout << "Time step (dt): " << dt << " seconds\n";
+    std::cout << "Initial Quaternion: " << ekf.getQuaternion().transpose() << "\n\n";
 
-    Eigen::VectorXd rollEstimated(numSamples);
-    Eigen::VectorXd pitchEstimated(numSamples);
+    ekf.predictForAllData();
 
-    std::cout << "Processing all samples...\n";
-    std::cout << "Step | Roll Truth | Roll Est | Pitch Truth | Pitch Est\n";
-    std::cout << "-----+------------+----------+-------------+-----------\n";
+    // Convert results to degrees
+    Utils::convertToDeg(ekf.getRollEstimationNonConst());
+    Utils::convertToDeg(ekf.getPitchEstimationNonConst());
 
-    for(int i = 0; i < numSamples; i++) {
-        Eigen::Vector3d gyroReading = gyroMeasurements.row(i).transpose();
-        Eigen::Vector3d accelReading = accelMeasurements.row(i).transpose();
-        accelReading(0) = -accelReading(0);
+    std::cout << "\n=== Error Metrics (all " << numSamples << " samples) in degrees ===\n";
+    std::cout << "Roll RMSE:  " << Utils::rmse(rollGroundTruth, ekf.getRollEstimation()) << " degrees\n";
+    std::cout << "Roll MEA:   " << Utils::mea(rollGroundTruth, ekf.getRollEstimation()) << " degrees\n";
+    std::cout << "Pitch RMSE: " << Utils::rmse(pitchGroundTruth, ekf.getPitchEstimation()) << " degrees\n";
+    std::cout << "Pitch MEA:  " << Utils::mea(pitchGroundTruth, ekf.getPitchEstimation()) << " degrees\n";
 
-        ekf.predict(gyroReading);
-        ekf.update(accelReading);
+    Utils::printVecToFile(ekf.getRollEstimation(), "Results/Results/EkfRoll.txt");
+    Utils::printVecToFile(ekf.getPitchEstimation(), "Results/Results/EkfPitch.txt");
 
-        rollEstimated(i) = ekf.getRoll() * 180.0 / M_PI;
-        pitchEstimated(i) = ekf.getPitch() * 180.0 / M_PI;
-
-        if(i < DISPLAY_SAMPLES || i >= numSamples - DISPLAY_SAMPLES) {
-            std::cout << std::setw(4) << i + 1 << " | ";
-            std::cout << std::setw(10) << rollGroundTruth(i) << " | ";
-            std::cout << std::setw(8) << rollEstimated(i) << " | ";
-            std::cout << std::setw(11) << pitchGroundTruth(i) << " | ";
-            std::cout << std::setw(9) << pitchEstimated(i) << "\n";
-        } else if(i == DISPLAY_SAMPLES) {
-            std::cout << "...\n";
-        }
-    }
-
-    std::cout << "\n=== Error Metrics (all " << numSamples << " samples) ===\n";
-    std::cout << "Roll RMSE:  " << Utils::rmse(rollGroundTruth, rollEstimated) << " degrees\n";
-    std::cout << "Roll MEA:   " << Utils::mea(rollGroundTruth, rollEstimated) << " degrees\n";
-    std::cout << "Pitch RMSE: " << Utils::rmse(pitchGroundTruth, pitchEstimated) << " degrees\n";
-    std::cout << "Pitch MEA:  " << Utils::mea(pitchGroundTruth, pitchEstimated) << " degrees\n";
-
-    Utils::printVecToFile(rollEstimated, "Results/Results/EkfRoll.txt");
-    Utils::printVecToFile(pitchEstimated, "Results/Results/EkfPitch.txt");
-    
     return 0;
 }
