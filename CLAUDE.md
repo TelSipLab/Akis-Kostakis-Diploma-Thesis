@@ -4,10 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is an ongoing C++ diploma thesis project for attitude estimation using IMU data. Currently implements complementary filter algorithms, with plans to extend to Kalman filtering approaches.
+This is a C++ diploma thesis project for attitude estimation using IMU data. Implements and compares three sensor fusion algorithms for roll and pitch estimation from gyroscope and accelerometer measurements.
 
-**Current Status**: Complementary filter implementation complete. Research phase completed - all relevant EKF papers have been read. **EKF implementation in progress** - predict() function and state transition Jacobian complete.
-**Next Phase**: Complete quaternion-based Extended Kalman Filter (EKF) implementation. Completed: constructor, quaternion utilities, predict() function with quaternion kinematics. Next steps: implement update() function with measurement Jacobian and processAllData() loop.
+**Current Status**: ✅ **IMPLEMENTATION COMPLETE** - All three filters fully implemented, tested, and producing results.
+
+### Implemented Filters
+1. **Complementary Filter** (α = 0.79) - RMSE: ~0.6° - Simple weighted fusion of gyro integration and accel measurements
+2. **Mahony Filter** (kp = 9) - RMSE: ~0.588° - Passive complementary filter with rotation matrix representation
+3. **Extended Kalman Filter (EKF)** - RMSE: ~0.298° - Quaternion-based optimal estimator with gyro bias correction
+
+**Project Status**: Ready for thesis analysis and writing. All algorithms implemented, visualization tools complete, performance metrics calculated.
 
 ## Data
 Data/gyro.csv contains gyroscope measurements from the IMU. 3-axes 1 column per axe (x,y,z). Values are rad/sec
@@ -38,31 +44,66 @@ cmake --build build --target run
 
 ### Core Components
 
-- **ComplementaryFilter**: Main algorithm implementation that fuses gyroscope and accelerometer data
-  - `ComplementaryFilter.hpp/cpp`: Filter class with configurable alpha coefficient and sampling rate
-  - Calculates roll and pitch using complementary filtering technique
+#### Sensor Fusion Algorithms (All Complete ✅)
 
-- **ExtendedKalmanFilter**: Quaternion-based EKF implementation (in progress)
-  - `ExtendedKalmanFilter.hpp/cpp`: 7D state vector EKF (quaternion + gyro bias estimation)
-  - Completed: constructor, quaternion utilities, predict() function, state transition Jacobian
-  - Pending: update() function, measurement Jacobian, processAllData() loop
+- **ComplementaryFilter**: Simple weighted fusion algorithm
+  - `ComplementaryFilter.hpp/cpp`: Filter class with configurable alpha coefficient (0.79) and sampling rate (0.02s)
+  - Implements: `setIMUData()`, `calculateRoll()`, `calculatePitch()`
+  - Output: Roll/pitch estimations stored as Eigen vectors
+  - Results: `Results/Results/ComplementaryRoll_a_0_79.txt`, `ComplementaryPitch_a_0_79.txt`
 
-- **CsvReader**: Data input handler for CSV files containing sensor data
+- **MahonyFilter**: Passive complementary filter with SO(3) representation
+  - `MahonyFilter.hpp/cpp`: Rotation matrix-based filter with proportional gain (kp = 9)
+  - Implements: `setIMUData()`, `predictForAllData()` with automatic orthonormalization
+  - Features: Error correction in rotation space using skew-symmetric matrices
+  - Results: `Results/Results/MahonyRoll_kp_9.txt`, `MahonyPitch_kp_9.txt`
+
+- **ExtendedKalmanFilter**: Quaternion-based optimal estimator (✅ COMPLETE)
+  - `ExtendedKalmanFilter.hpp/cpp`: 7D state vector (quaternion + 3D gyro bias)
+  - Implements: Full predict-update cycle with Jacobian computation
+    - `predict()`: Quaternion kinematics with bias-corrected gyro
+    - `update()`: Accelerometer measurement model with Kalman gain
+    - `computeF()`: State transition Jacobian (7×7)
+    - `computeH()`: Measurement Jacobian (3×7)
+  - Features: Automatic bias estimation, quaternion normalization, covariance tracking
+  - Results: `Results/Results/EkfRoll.txt`, `EkfPitch.txt`
+
+#### Support Components
+
+- **CsvReader**: Data input handler for CSV files
   - `csvreader.hpp`: Template-based CSV parser that converts data to Eigen matrices
   - Handles gyro, accelerometer, and ground truth angle data from Data/ directory
 
-- **Utils**: Mathematical utilities and file I/O operations  
+- **Utils**: Mathematical utilities and file I/O operations
   - `Utils.hpp`: Static utility functions for angle conversion, RMSE/MEA calculations, vector operations
   - File output functions for results storage in Results/ directory
 
-### Data Flow
+### Common Data Flow (All Filters)
 
-1. Read sensor data from CSV files (gyro.csv, accel.csv, angles.csv in Data/ directory)
-2. Initialize ComplementaryFilter with alpha coefficient (typically 0.8) and time step (0.02s)
-3. Process data through complementary filter to estimate roll/pitch
-4. Compare estimates with ground truth and calculate error metrics
-5. Output results to Results/ directory as text files
-6. Visualize results using Python plotting script
+1. **Load Data**: Read CSV files from `Data/` directory
+   - `gyro.csv` - 3-axis gyroscope (rad/s)
+   - `accel.csv` - 3-axis accelerometer (m/s²)
+   - `angles.csv` - Ground truth roll/pitch (rad)
+
+2. **Initialize Filter**: Create filter object with tuned parameters
+   - Complementary: alpha coefficient (0.79), dt (0.02s)
+   - Mahony: kp gain (9), dt (0.02s)
+   - EKF: dt (0.02s), initial quaternion from first accel sample
+
+3. **Process Data**:
+   - Call `setIMUData(gyro, accel)` to load sensor measurements
+   - Call `predictForAllData()` to run filter on all samples
+   - Filter handles predict-update cycle internally
+
+4. **Extract Results**:
+   - Get roll/pitch estimates: `getRollEstimation()`, `getPitchEstimation()`
+   - Convert from radians to degrees
+   - Calculate RMSE and MEA vs ground truth
+
+5. **Save and Visualize**:
+   - Save estimates to `Results/Results/*.txt`
+   - Generate plots using Python scripts
+   - Analyze performance metrics
 
 ## Dependencies
 
@@ -70,33 +111,140 @@ cmake --build build --target run
 - **Standard C++14**: Required compiler standard
 - **Python with matplotlib**: For visualization (plotDiagrams.py)
 
-## Development Workflow
+## Build and Run
 
-1. Modify algorithm parameters in main.cpp (alpha, dt)
-2. Build and run: `make run`
-3. View numerical results in console output
-4. Generate plots: `python plotDiagrams.py`
-5. Check Results/ directory for output files
+### Build Individual Filters
+```bash
+make complemntaryFilter   # Build complementary filter
+make mahonyFilter          # Build Mahony filter
+make ekfFilter             # Build EKF
+make all                   # Build all three filters
+```
+
+### Run Filters
+```bash
+./bin/complmentary.out     # Run complementary filter
+./bin/mahony.out           # Run Mahony filter
+./bin/ekf.out              # Run EKF
+```
+
+Each filter outputs:
+- Console: RMSE and MEA error metrics
+- Files: Roll/pitch estimates saved to `Results/Results/`
+
+## Visualization and Analysis
+
+### Individual Filter Plots
+```bash
+python Results/plotDiagrams.py         # Plot EKF results (currently configured)
+python Results/plotDiagrams_zoomed.py  # Zoomed view of EKF (samples 300-700)
+```
+- Generates comparison plots: Estimated vs Ground Truth
+- Displays RMSE on plot
+- Saves to `Results/Figures/`
+
+### Comprehensive Analysis
+```bash
+python Results/analyze_dynamics.py     # Full 3-filter comparison with sensor dynamics
+```
+Generates 4-panel analysis plot showing:
+1. Roll angle comparison (all 3 filters vs ground truth)
+2. Absolute errors with RMSE in legend
+3. Gyro magnitude (angular rate dynamics)
+4. Accelerometer magnitude (external acceleration detection)
+
+**Key Features:**
+- Automatic RMSE calculation and display
+- High/low dynamics performance breakdown (75th percentile threshold)
+- Best performer identification for different motion regimes
+- Output: `Results/Figures/Roll_Dynamics_Analysis.png`
 
 ## Key Files
 
-- `main.cpp`: Entry point with data loading and filter execution
-- `pch.h`: Precompiled header with common includes (Eigen, iostream, etc.)
-- `plotDiagrams.py`: Visualization script for comparing predicted vs expected results
-- `compile_commands.json`: Generated compilation database for IDE support
+### Main Executables
+- `complentaryFilterMain.cpp` - Complementary filter entry point
+- `mahonyFilterMain.cpp` - Mahony filter entry point
+- `ekfFilterMain.cpp` - EKF entry point
 
-### EKF Implementation Files
-- `src/ExtendedKalmanFilter.cpp` & `include/ExtendedKalmanFilter.hpp`: Core EKF implementation (7D state: quaternion + bias)
-- `src/jacobian.cpp`: Standalone example demonstrating Jacobian computation with Eigen
-- **`MDFiles/EKF_Complete_Mathematical_Reference.md`**: **PRIMARY REFERENCE** - Complete mathematical documentation with all EKF equations, derivations, Jacobians, tuning parameters, and implementation details (replaces older fragmented docs)
+All three follow the same pattern:
+1. Load CSV data (gyro, accel, ground truth angles)
+2. Initialize filter with parameters
+3. Call `setIMUData()` and `predictForAllData()` (or equivalent)
+4. Convert results to degrees and calculate RMSE/MEA
+5. Save results to `Results/Results/`
 
-The project expects Data/ directory with sensor CSV files and creates Results/ directory for output files.
+### Implementation Files
+- `src/ComplementaryFilter.cpp` & `include/ComplementaryFilter.hpp`
+- `src/MahonyFilter.cpp` & `include/MahonyFilter.hpp`
+- `src/ExtendedKalmanFilter.cpp` & `include/ExtendedKalmanFilter.hpp`
+- `include/Utils.hpp` - Shared utilities (RMSE, angle conversion, file I/O)
+- `include/csvreader.hpp` - CSV data loading
+
+### Visualization Scripts (Python)
+- `Results/plotDiagrams.py` - Individual filter plots (configurable)
+- `Results/plotDiagrams_zoomed.py` - Zoomed view for detailed analysis
+- `Results/analyze_dynamics.py` - **Comprehensive 3-filter comparison with dynamics analysis**
+
+### Documentation
+- **`MDFiles/EKF_Complete_Mathematical_Reference.md`** - **PRIMARY EKF REFERENCE**
+  - Complete mathematical documentation with all EKF equations
+  - Quaternion mathematics, kinematics, and rotation representations
+  - Detailed Jacobian derivations (F: 7×7 state transition, H: 3×7 measurement)
+  - Tuning guide for process/measurement noise covariance matrices
+  - Troubleshooting common EKF issues
+- `MDFiles/MahonyFilter_Mathematical_Documentation.md` - Mahony filter theory
+- `pch.h` - Precompiled header with common includes (Eigen, iostream, etc.)
+- `compile_commands.json` - Generated compilation database for IDE support
+
+### Project Structure
+```
+├── Data/                    # Input sensor data
+│   ├── gyro.csv            # Gyroscope measurements (rad/s)
+│   ├── accel.csv           # Accelerometer measurements (m/s²)
+│   └── angles.csv          # Ground truth angles (rad)
+├── Results/
+│   ├── Results/            # Filter output files (.txt)
+│   ├── Figures/            # Generated plots (.png)
+│   └── *.py                # Analysis scripts
+├── src/                    # Implementation files (.cpp)
+├── include/                # Header files (.hpp)
+└── MDFiles/                # Documentation
+```
+## Performance Summary
+
+| Filter | RMSE (degrees) | Parameters | Strengths | Limitations |
+|--------|----------------|------------|-----------|-------------|
+| **Complementary** | ~0.6° | α = 0.79, dt = 0.02s | Simple, computationally efficient, intuitive tuning | No bias estimation, fixed weighting |
+| **Mahony** | ~0.588° | kp = 9, dt = 0.02s | Better dynamics handling, rotation space correction | More complex than complementary, single gain parameter |
+| **EKF** | **~0.298°** | Q, R covariance matrices | **Best accuracy**, automatic bias estimation, optimal fusion | Most complex, requires tuning multiple parameters |
+
+**Winner: EKF** achieves ~50% lower error than complementary filter through optimal state estimation and gyroscope bias correction.
+
+### High vs Low Dynamics Performance
+The `analyze_dynamics.py` script automatically identifies high-dynamics periods (top 25% gyro magnitude) and calculates separate RMSE for each filter, revealing performance under different motion conditions.
+
 ## Research Materials
 
-- **Papers Read**: All EKF research materials have been studied in the following order:
+- **Papers Read**: All EKF research materials studied in order:
   1. `kalman_intro.pdf` - Basic Kalman filter theory and fundamentals
   2. `kalaman_intermediate.pdf` - Advanced Kalman filter concepts
-  3. `Quaternion-based_extended_Kalman_filter_for_determining_orientation_by_inertial_and_magnetic_sensing.pdf` - Main reference for quaternion-based EKF implementation
-- **Reference Document**: `EKF_Equations_Reference.md` - Detailed mathematical reference with all EKF equations and symbol definitions
-- All relevant papers for this thesis project are located in the Pappers/ folder
-- ArchiveDoNotTouch Also do not use this folder at all these are old files
+  3. `Quaternion-based_extended_Kalman_filter_for_determining_orientation_by_inertial_and_magnetic_sensing.pdf` - Primary reference for quaternion-based EKF implementation
+- **Mathematical References**: Comprehensive documentation in `MDFiles/EKF_Complete_Mathematical_Reference.md`
+- All relevant papers located in `Pappers/` folder
+- **Archive Note**: `ArchiveDoNotTouch/` contains old files - do not use
+
+## Project Status Notes
+
+✅ **Completed:**
+- All three sensor fusion algorithms implemented and tested
+- Consistent API across all filters (`setIMUData()`, `predictForAllData()` pattern)
+- Comprehensive visualization and analysis tools
+- Full mathematical documentation for all algorithms
+- Performance benchmarking complete
+
+🎯 **Next Steps (Thesis Writing):**
+- Analyze high/low dynamics performance differences
+- Document algorithm trade-offs (complexity vs accuracy)
+- Generate additional plots for thesis chapters
+- Write comparative analysis section
+- Discuss bias estimation benefits of EKF
