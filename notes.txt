@@ -1,0 +1,32 @@
+Mahony Passive Complementary Filter Test
+
+Dataset: 1409 samples
+Time step (dt): 0.020000 seconds
+Proportional gain (kP): 9.000000
+
+
+=== Error Metrics (all 1409 samples) in degrees ===
+Roll RMSE:  0.588950 degrees
+Roll MEA:   0.301615 degrees
+Pitch RMSE: 1.429846 degrees
+Pitch MEA:  0.774373 degrees
+
+
+
+
+
+-------
+
+Complementary Filter Test
+
+Dataset: 1409 samples
+Time step (dt): 0.020000 seconds
+Alpha coefficient: 0.790000
+
+
+=== Error Metrics (all 1409 samples) in degrees ===
+Roll RMSE:  0.819647 degrees
+Roll MEA:   0.340163 degrees
+Pitch RMSE: 0.771210 degrees
+Pitch MEA:  0.465156 degrees
+
