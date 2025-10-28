@@ -88,9 +88,7 @@ cmake --build build --target run
 ### EKF Implementation Files
 - `src/ExtendedKalmanFilter.cpp` & `include/ExtendedKalmanFilter.hpp`: Core EKF implementation (7D state: quaternion + bias)
 - `src/jacobian.cpp`: Standalone example demonstrating Jacobian computation with Eigen
-- `MDFiles/KalmanFilterEquations.md`: Standard linear Kalman filter equations reference
-- `MDFiles/ExtentedKFEquations.md`: Extended Kalman filter equations with mathematical derivations
-- `MDFiles/impl.md`: Detailed EKF implementation architecture and algorithm flow
+- **`MDFiles/EKF_Complete_Mathematical_Reference.md`**: **PRIMARY REFERENCE** - Complete mathematical documentation with all EKF equations, derivations, Jacobians, tuning parameters, and implementation details (replaces older fragmented docs)
 
 The project expects Data/ directory with sensor CSV files and creates Results/ directory for output files.
 ## Research Materials
@@ -101,3 +99,4 @@ The project expects Data/ directory with sensor CSV files and creates Results/ d
   3. `Quaternion-based_extended_Kalman_filter_for_determining_orientation_by_inertial_and_magnetic_sensing.pdf` - Main reference for quaternion-based EKF implementation
 - **Reference Document**: `EKF_Equations_Reference.md` - Detailed mathematical reference with all EKF equations and symbol definitions
 - All relevant papers for this thesis project are located in the Pappers/ folder
+- ArchiveDoNotTouch Also do not use this folder at all these are old files

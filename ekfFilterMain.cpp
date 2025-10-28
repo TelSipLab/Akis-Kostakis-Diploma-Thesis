@@ -77,11 +77,8 @@ int main() {
     std::cout << "Pitch RMSE: " << Utils::rmse(pitchGroundTruth, pitchEstimated) << " degrees\n";
     std::cout << "Pitch MEA:  " << Utils::mea(pitchGroundTruth, pitchEstimated) << " degrees\n";
 
-    Utils::printVecToFile(rollEstimated, "Results/predicted_roll_ekf.txt");
-    // Utils::printVecToFile(rollTruthVector, "Results/expected_roll.txt");
-
-    Utils::printVecToFile(pitchEstimated, "Results/predicted_pitch_ekf.txt");
-    // Utils::printVecToFile(pitchTruthVector, "Results/expected_pitch.txt");
-
+    Utils::printVecToFile(rollEstimated, "Results/Results/EkfRoll.txt");
+    Utils::printVecToFile(pitchEstimated, "Results/Results/EkfPitch.txt");
+    
     return 0;
 }
