@@ -88,15 +88,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="complentaryFilterMain.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="ekfFilterMain.cpp">
-      <ExcludedFromBuild>false</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="mahonyFilterMain.cpp">
-      <ExcludedFromBuild>true</ExcludedFromBuild>
-    </ClCompile>
+    <ClCompile Include="mahonyFilterMain.cpp" />
     <ClCompile Include="src\ComplementaryFilter.cpp" />
     <ClCompile Include="src\EKF2.cpp" />
     <ClCompile Include="src\MahonyFilter.cpp" />

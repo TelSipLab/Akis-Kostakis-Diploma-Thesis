@@ -2,10 +2,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Define file names
-rollPredicted = 'Results/predicted_roll_mahony_50.txt'
+rollPredicted = 'Results/predicted_roll_mahony_9.txt'
 rollReal = 'Results/expected_roll.txt' # DONT CHANGE
 
-rmse = 1.82 # either by cpp code or we can calculate from python
+rollRMSE =  0.58 # either by cpp code or we can calculate from python
 
 # Read data from files
 rollData = np.loadtxt(rollPredicted)
@@ -30,7 +30,7 @@ y_margin = (y_max - y_min) * 0.1  # 10% margin
 plt.ylim(y_min - y_margin, y_max + y_margin)
 
 # Display RMSE on the plot
-plt.text(0.05, 0.95, f'RMSE: {rmse}',
+plt.text(0.05, 0.95, f'Roll RMSE: {rollRMSE}',
          transform=plt.gca().transAxes,  # use axes coordinates
          fontsize=12, color='black', verticalalignment='top')
 
@@ -40,5 +40,5 @@ plt.tight_layout()
 # Show the plot
 # plt.show()
 
-plt.savefig("Results/Figures/RollRMSE_Mahony.png")
+plt.savefig("Results/Figures/RollRMSE_Mahony_9.png")
 print(f"Plot saved")

@@ -24,14 +24,8 @@
     <ClCompile Include="src\MahonyFilter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="complentaryFilterMain.cpp">
-      <Filter>Main Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ekfFilterMain.cpp">
-      <Filter>Main Files</Filter>
-    </ClCompile>
     <ClCompile Include="mahonyFilterMain.cpp">
-      <Filter>Main Files</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

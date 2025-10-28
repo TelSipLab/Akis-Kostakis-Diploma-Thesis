@@ -12,7 +12,7 @@ int main() {
     bool calculateBestK = false;
 
     const double dt = 0.02;
-    const double kp = 9; // Increased gain for faster correction
+    const double kp = 9; // Was calcualted via searching loop
     const int DISPLAY_SAMPLES = 10;
 
     // Load data
@@ -59,8 +59,6 @@ int main() {
         std::cout << "Best K " << bestK << " and best RMSE " << bestRMSE << std::endl;
 
     } else {
-        // Initialize Mahony filter
-
         std::cout << "Mahony Passive Complementary Filter Test\n\n";
 
         std::cout << "Dataset: " << numSamples << " samples\n";
@@ -76,13 +74,9 @@ int main() {
     std::cout << "Pitch RMSE: " << Utils::rmse(pitchGroundTruth, mahony.getPitchEstimation()) << " degrees\n";
     std::cout << "Pitch MEA:  " << Utils::mea(pitchGroundTruth, mahony.getPitchEstimation()) << " degrees\n";
 
-    Utils::printVecToFile(mahony.getRollEstimation(), "Results/predicted_roll_mahony_50.txt");
-    Utils::printVecToFile(mahony.getPitchEstimation(), "Results/predicted_pitch_mahony_50.txt");
+    Utils::printVecToFile(mahony.getRollEstimation(), "Results/predicted_roll_mahony_9.txt");
+    Utils::printVecToFile(mahony.getPitchEstimation(), "Results/predicted_pitch_mahony_9.txt");
 
 
     return 0;
-}
-
-void calculateBestK() {
-
 }
