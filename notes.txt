@@ -30,3 +30,18 @@ Roll MEA:   0.340163 degrees
 Pitch RMSE: 0.771210 degrees
 Pitch MEA:  0.465156 degrees
 
+
+
+Extended Kalman Filter Test
+
+Dataset: 1409 samples
+Time step (dt): 0.020000 seconds
+Initial Quaternion:  0.999998  0.001935  0.000079 -0.000000
+
+
+=== Error Metrics (all 1409 samples) in degrees ===
+Roll RMSE:  0.298356 degrees
+Roll MEA:   0.210488 degrees
+Pitch RMSE: 0.720002 degrees
+Pitch MEA:  0.466126 degrees
+
