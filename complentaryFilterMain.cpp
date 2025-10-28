@@ -87,8 +87,8 @@ int main() {
     std::cout << "Pitch RMSE: " << Utils::rmse(pitchGroundTruth, pitch) << " degrees\n";
     std::cout << "Pitch MEA:  " << Utils::mea(pitchGroundTruth, pitch) << " degrees\n";
 
-    Utils::printVecToFile(roll, "Results/predicted_roll_complementary.txt");
-    Utils::printVecToFile(pitch, "Results/predicted_pitch_complementary.txt");
+    Utils::printVecToFile(roll, "Results/Results/ComplementaryRoll_a_0_79.txt");
+    Utils::printVecToFile(pitch, "Results/Results/ComplementaryPitch_a_0_79.txt");
 
     return 0;
 }

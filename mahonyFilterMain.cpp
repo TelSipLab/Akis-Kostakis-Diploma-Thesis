@@ -79,8 +79,8 @@ int main() {
     std::cout << "Pitch RMSE: " << Utils::rmse(pitchGroundTruth, mahony.getPitchEstimation()) << " degrees\n";
     std::cout << "Pitch MEA:  " << Utils::mea(pitchGroundTruth, mahony.getPitchEstimation()) << " degrees\n";
 
-    Utils::printVecToFile(mahony.getRollEstimation(), "Results/predicted_roll_mahony_9.txt");
-    Utils::printVecToFile(mahony.getPitchEstimation(), "Results/predicted_pitch_mahony_9.txt");
+    Utils::printVecToFile(mahony.getRollEstimation(), "Results/Results/MahonyRoll_kp_9.txt");
+    Utils::printVecToFile(mahony.getPitchEstimation(), "Results/Results/MahonyPitch_kp_9.txt");
 
     return 0;
 }
