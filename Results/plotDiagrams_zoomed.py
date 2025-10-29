@@ -3,9 +3,10 @@ import numpy as np
 
 # Roll ground truth file
 rollReal = 'Results/ExpectedResults/expected_roll.txt'
-rollPredicted = 'Results/Results/EkfRoll.txt'
+rollPredicted = 'Results/Results/ComplementaryRoll_a_0_79.txt'
 
-rollRMSE = 0.298  # Keep it to 3 decimals
+rollRMSE = 0.819  # Keep it to 3 decimals
+a=0.79
 
 # Read data from files
 rollData = np.loadtxt(rollPredicted)
@@ -28,7 +29,7 @@ plt.plot(time_axis, rollReal_zoom, label='Expected Roll', linestyle='--', linewi
 # Add labels, title, and grid
 plt.xlabel('Sample Index', fontsize=14)
 plt.ylabel('Roll Angle (degrees)', fontsize=14)
-plt.title(f"Zoomed View: Actual Roll vs EKF Estimation (samples {start_time}-{end_time})", fontsize=14)
+plt.title(f"Zoomed View: Actual Roll vs Complentary Filter Estimation (samples {start_time}-{end_time})", fontsize=14)
 plt.legend(fontsize=12)
 plt.grid(True, alpha=0.3)
 
@@ -44,10 +45,14 @@ plt.text(0.05, 0.95, f'Roll RMSE (full data): {rollRMSE}',
          fontsize=12, color='black', verticalalignment='top',
          bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
 
+plt.text(0.05, 0.91, f'a = {a}',
+         transform=plt.gca().transAxes,
+         fontsize=12, color='black', verticalalignment='top',
+         bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
 
 # Reduce whitespace margins
 plt.tight_layout()
 
 # Save the plot
-plt.savefig(f"Results/Figures/EkfRoll_zoomed_{start_time}_{end_time}.png", dpi=150)
-print(f"Zoomed EKF plot saved: Results/Figures/EkfRoll_zoomed_{start_time}_{end_time}.png")
+plt.savefig(f"Results/Figures/ComplementaryRoll_a_0_79_{start_time}_{end_time}.png", dpi=150)
+print(f"Zoomed EKF plot saved: Results/Figures/ComplementaryRoll_a_0_79_{start_time}_{end_time}.png")
