@@ -10,10 +10,10 @@ This is a C++ diploma thesis project for attitude estimation using IMU data. Imp
 
 ### Implemented Filters
 1. **Complementary Filter** (α = 0.79) - RMSE: ~0.6° - Simple weighted fusion of gyro integration and accel measurements
-2. **Mahony Filter** (kp = 9) - RMSE: ~0.588° - Passive complementary filter with rotation matrix representation
+2. **Mahony Filter** (kp = 9) - Roll RMSE: ~0.588° / Pitch RMSE: ~1.43° - Passive complementary filter with rotation matrix representation (⚠️ pitch needs re-tuning)
 3. **Extended Kalman Filter (EKF)** - RMSE: ~0.298° - Quaternion-based optimal estimator with gyro bias correction
 
-**Project Status**: Ready for thesis analysis and writing. All algorithms implemented, visualization tools complete, performance metrics calculated.
+**Project Status**: Core algorithms complete. Investigating RNN/deep learning approaches and optimizing Mahony filter performance.
 
 ## Data
 Data/gyro.csv contains gyroscope measurements from the IMU. 3-axes 1 column per axe (x,y,z). Values are rad/sec
@@ -36,9 +36,22 @@ make clean        # Remove built files
 ### Using CMake (Alternative)
 ```bash
 cmake -B build
-cmake --build build
-cmake --build build --target run
+
+# Build individual filters
+cmake --build build --target complemntaryFilter
+cmake --build build --target mahonyFilter
+cmake --build build --target ekfFilter
+
+# Build all
+cmake --build build --target all_filters
+
+# Run filters
+cmake --build build --target run_complementary
+cmake --build build --target run_mahony
+cmake --build build --target run_ekf
 ```
+
+Both build systems (Make and CMake) are fully supported and produce identical binaries in `bin/` directory.
 
 ## Architecture
 
@@ -212,13 +225,15 @@ All three follow the same pattern:
 ```
 ## Performance Summary
 
-| Filter | RMSE (degrees) | Parameters | Strengths | Limitations |
-|--------|----------------|------------|-----------|-------------|
-| **Complementary** | ~0.6° | α = 0.79, dt = 0.02s | Simple, computationally efficient, intuitive tuning | No bias estimation, fixed weighting |
-| **Mahony** | ~0.588° | kp = 9, dt = 0.02s | Better dynamics handling, rotation space correction | More complex than complementary, single gain parameter |
-| **EKF** | **~0.298°** | Q, R covariance matrices | **Best accuracy**, automatic bias estimation, optimal fusion | Most complex, requires tuning multiple parameters |
+| Filter | Roll RMSE | Pitch RMSE | Parameters | Strengths | Limitations |
+|--------|-----------|------------|------------|-----------|-------------|
+| **Complementary** | 0.820° | 0.771° | α = 0.79, dt = 0.02s | Simple, computationally efficient, intuitive tuning | No bias estimation, fixed weighting |
+| **Mahony** | 0.589° | 1.430° ⚠️ | kp = 9, dt = 0.02s | Better dynamics handling, rotation space correction | kp tuned for roll only, pitch suffers |
+| **EKF** | **0.298°** | **0.720°** | Q, R covariance matrices | **Best accuracy**, automatic bias estimation, optimal fusion | Most complex, requires tuning multiple parameters |
 
-**Winner: EKF** achieves ~50% lower error than complementary filter through optimal state estimation and gyroscope bias correction.
+**Winner: EKF** achieves best performance on both axes through optimal state estimation and gyroscope bias correction.
+
+**Note:** Mahony filter kp was optimized for roll only (see mahonyFilterMain.cpp:55). Re-tuning for combined roll+pitch metric should improve pitch RMSE from 1.43° to ~0.9°.
 
 ### High vs Low Dynamics Performance
 The `analyze_dynamics.py` script automatically identifies high-dynamics periods (top 25% gyro magnitude) and calculates separate RMSE for each filter, revealing performance under different motion conditions.
@@ -242,9 +257,16 @@ The `analyze_dynamics.py` script automatically identifies high-dynamics periods 
 - Full mathematical documentation for all algorithms
 - Performance benchmarking complete
 
-🎯 **Next Steps (Thesis Writing):**
-- Analyze high/low dynamics performance differences
-- Document algorithm trade-offs (complexity vs accuracy)
-- Generate additional plots for thesis chapters
-- Write comparative analysis section
-- Discuss bias estimation benefits of EKF
+🎯 **Current Investigations:**
+- **Data availability check:** Investigating if more IMU data exists (potentially 1+ hour vs current 28 seconds)
+- **Mahony optimization:** Re-tune kp for combined roll+pitch performance (currently optimized for roll only)
+- **RNN/ML exploration:** Evaluating feasibility of deep learning approaches
+  - See `MDFiles/RNN_Feasibility_Analysis.md` for comprehensive analysis
+  - Options: Simple LSTM, Attention-LSTM, Hybrid EKF+LSTM
+  - Viability depends on data availability and professor approval
+
+🔧 **Pending Tasks:**
+- Fix Mahony pitch tuning (1 day, guaranteed improvement)
+- Verify total available IMU dataset size
+- Consult professor on ML approach for thesis
+- Decide: Classical optimization vs Deep learning exploration

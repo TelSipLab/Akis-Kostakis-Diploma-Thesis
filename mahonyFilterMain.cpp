@@ -34,11 +34,6 @@ int main() {
     Utils::convertToDeg(rollGroundTruth);
     Utils::convertToDeg(pitchGroundTruth);
 
-
-    Utils::printVecToFile(rollGroundTruth, "Results/ExpectedResults/expected_roll.txt");
-    Utils::printVecToFile(pitchGroundTruth, "Results/ExpectedResults/expected_pitch.txt");
-    exit(-1);
-
     const int numSamples = static_cast<int>(gyroMeasurements.rows());
     MahonyFilter mahony(dt, kp);
     mahony.setIMUData(gyroMeasurements, accelMeasurements);
