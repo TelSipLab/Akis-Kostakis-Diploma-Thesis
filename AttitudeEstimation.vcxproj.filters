@@ -54,5 +54,11 @@
     <None Include=".gitignore" />
     <None Include=".clang-format" />
     <None Include="CLAUDE.md" />
+    <None Include="Data\accel.csv" />
+    <None Include="Data\angles.csv" />
+    <None Include="Data\gyro.csv" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="CMakeLists.txt" />
   </ItemGroup>
 </Project>
