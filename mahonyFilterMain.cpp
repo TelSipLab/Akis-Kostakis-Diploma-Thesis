@@ -2,7 +2,6 @@
 #include "Utils.hpp"
 #include "csvreader.hpp"
 
-#include <algorithm>
 #include <iomanip>
 #include <iostream>
 
