@@ -52,7 +52,8 @@ All sensor data is located in the `Data/` directory from a 6-DOF IMU sensor.
 
 ### Installation
 
-Ensure Eigen3 is installed and available in system include paths (`/usr/local/include` or `/usr/include`):
+Eigen3 is a compile dependency.  
+Best way is to install it through your package manager
 
 ```bash
 # Ubuntu/Debian
@@ -61,8 +62,13 @@ sudo apt-get install libeigen3-dev
 # macOS
 brew install eigen
 ```
-You can also download it from the release and extract to your preffered location, it's easy since it is only header library
 
+You can also download it from the release and extract to your preffered location, it's easy since it is only header library. Just make sure the location is in the compiler path
+
+It only compiles with the **3.4.1** version.
+
+3.4.1 release: wget https://gitlab.com/libeigen/eigen/-/archive/3.4.1/eigen-3.4.1.tar.gz  
+Extract and copy
 
 ### Build
 
