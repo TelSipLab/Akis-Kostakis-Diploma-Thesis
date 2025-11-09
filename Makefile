@@ -12,6 +12,7 @@ OBJECTS = $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SOURCES))
 COMPLEMENTARY_MAIN_OBJ = $(BUILD_DIR)/complentaryFilterMain.o
 EKF_MAIN_OBJ = $(BUILD_DIR)/ekfFilterMain.o
 MAHONYFILTER_MAIN_OBJ=$(BUILD_DIR)/mahonyFilterMain.cpp.o
+EXPLICIT_CF_MAIN_OBJ=$(BUILD_DIR)/explicitComplementaryFilterMain.o
 
 # Create build and binary directories if they don't exist
 $(BUILD_DIR):
@@ -47,6 +48,14 @@ mahonyFilter: $(OBJECTS) $(MAHONYFILTER_MAIN_OBJ)
 	$(CXX) $(CXXFLAGS) $^ -o $(BINARY_DIR)/mahony.out
 
 
+# Explicit Complementary Filter
+$(EXPLICIT_CF_MAIN_OBJ): explicitComplementaryFilterMain.cpp | $(BUILD_DIR)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
+
+explicitComplementaryFilter: $(OBJECTS) $(EXPLICIT_CF_MAIN_OBJ)
+	$(CXX) $(CXXFLAGS) $^ -o $(BINARY_DIR)/explicitCF.out
+
+
 clean:
 	rm -rf $(BUILD_DIR)
 	rm -rf $(BINARY_DIR)
@@ -54,7 +63,7 @@ clean:
 
 
 # Build all filters
-all: complemntaryFilter ekfFilter mahonyFilter
+all: complemntaryFilter ekfFilter mahonyFilter explicitComplementaryFilter
 
 
-.PHONY: complemntaryFilter ekfFilter mahonyFilter clean
+.PHONY: complemntaryFilter ekfFilter mahonyFilter explicitComplementaryFilter clean
