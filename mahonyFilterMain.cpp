@@ -12,7 +12,7 @@ int main() {
     bool calculateBestK = false;
 
     const double dt = 0.02;
-    const double kp = 9; // Was calcualted via searching loop using RMSE for both roll and pitch best value is 11
+    const double kp = 11; // Was calcualted via searching loop using RMSE for both roll and pitch best value is 11
     const int DISPLAY_SAMPLES = 10;
 
     // Load data
