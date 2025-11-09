@@ -11,7 +11,7 @@ int main() {
     bool calculateBestK = false;
 
     const double dt = 0.02;
-    const double kp = 9; // Was calcualted via searching loop
+    const double kp = 11; // Was calcualted via searching loop using RMSE for both roll and pitch
     const int DISPLAY_SAMPLES = 10;
 
     // Load data
@@ -39,22 +39,48 @@ int main() {
 
     if(calculateBestK) {
         double bestK=1;
-        double bestRMSE = 100.00;
+        double bestCombinedRMSE = 100.00;
+        double bestRollRMSE = 0.0;
+        double bestPitchRMSE = 0.0;
+
+        std::cout << "Searching for best kp \n";
 
         for(int i=1; i < 101; i++) {
             MahonyFilter mahonyTmp(dt, i);
             mahonyTmp.setIMUData(gyroMeasurements, accelMeasurements);
 
             mahonyTmp.predictForAllData();
-            double tmpBetRmse = Utils::rmse(rollGroundTruth, mahonyTmp.getRollEstimation());
 
-            if (tmpBetRmse < bestRMSE) {
-                bestRMSE = tmpBetRmse;
+            // Convert to degrees for RMSE calculation
+            Utils::convertToDeg(mahonyTmp.getRollEstimationNonConst());
+            Utils::convertToDeg(mahonyTmp.getPitchEstimationNonConst());
+
+            double rollRMSE = Utils::rmse(rollGroundTruth, mahonyTmp.getRollEstimation());
+            double pitchRMSE = Utils::rmse(pitchGroundTruth, mahonyTmp.getPitchEstimation());
+
+            // Combined metric: average of roll and pitch RMSE
+            double combinedRMSE = (rollRMSE + pitchRMSE) / 2.0;
+
+            if (combinedRMSE < bestCombinedRMSE) {
+                bestCombinedRMSE = combinedRMSE;
+                bestRollRMSE = rollRMSE;
+                bestPitchRMSE = pitchRMSE;
                 bestK = i;
+            }
+
+            // Print progress every 10 iterations
+            if (i % 10 == 0) {
+                std::cout << "kp=" << i << " -> Roll RMSE: " << rollRMSE
+                          << "°, Pitch RMSE: " << pitchRMSE
+                          << "°, Combined: " << combinedRMSE << "°\n";
             }
         }
 
-        std::cout << "Best K " << bestK << " and best RMSE " << bestRMSE << std::endl;
+        std::cout << "\n=== BEST RESULTS ===\n";
+        std::cout << "Best kp: " << bestK << "\n";
+        std::cout << "Roll RMSE:  " << bestRollRMSE << " degrees\n";
+        std::cout << "Pitch RMSE: " << bestPitchRMSE << " degrees\n";
+        std::cout << "Combined RMSE: " << bestCombinedRMSE << " degrees (average)\n";
 
     } else {
         std::cout << "Mahony Passive Complementary Filter Test\n\n";
