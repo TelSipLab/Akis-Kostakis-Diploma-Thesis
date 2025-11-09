@@ -4,6 +4,7 @@
 
 #include <iomanip>
 #include <iostream>
+#include <string>
 
 int main() {
     std::cout << std::fixed << std::setprecision(6);
@@ -11,7 +12,7 @@ int main() {
     bool calculateBestK = false;
 
     const double dt = 0.02;
-    const double kp = 11; // Was calcualted via searching loop using RMSE for both roll and pitch
+    const double kp = 9; // Was calcualted via searching loop using RMSE for both roll and pitch
     const int DISPLAY_SAMPLES = 10;
 
     // Load data
@@ -103,8 +104,8 @@ int main() {
     std::cout << "Pitch RMSE: " << Utils::rmse(pitchGroundTruth, mahony.getPitchEstimation()) << " degrees\n";
     std::cout << "Pitch MEA:  " << Utils::mea(pitchGroundTruth, mahony.getPitchEstimation()) << " degrees\n";
 
-    Utils::printVecToFile(mahony.getRollEstimation(), "Results/Results/MahonyRoll_kp_9.txt");
-    Utils::printVecToFile(mahony.getPitchEstimation(), "Results/Results/MahonyPitch_kp_9.txt");
+    Utils::printVecToFile(mahony.getRollEstimation(), "Results/Results/MahonyRoll_kp_" + std::to_string(kp) + ".txt");
+    Utils::printVecToFile(mahony.getPitchEstimation(), "Results/Results/MahonyPitch_kp_" + std::to_string(kp) + ".txt");
 
     return 0;
 }
