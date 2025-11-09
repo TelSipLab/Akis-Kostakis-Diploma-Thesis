@@ -6,14 +6,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a C++ diploma thesis project for attitude estimation using IMU data. Implements and compares three sensor fusion algorithms for roll and pitch estimation from gyroscope and accelerometer measurements.
 
-**Current Status**: ✅ **IMPLEMENTATION COMPLETE** - All three filters fully implemented, tested, and producing results.
+**Current Status**: ✅ **ALL FILTERS VERIFIED AND VALIDATED** - Four sensor fusion algorithms fully implemented, optimized, tested, and verified.
 
 ### Implemented Filters
-1. **Complementary Filter** (α = 0.79) - RMSE: ~0.6° - Simple weighted fusion of gyro integration and accel measurements
-2. **Mahony Filter** (kp = 9) - Roll RMSE: ~0.588° / Pitch RMSE: ~1.43° - Passive complementary filter with rotation matrix representation (⚠️ pitch needs re-tuning)
-3. **Extended Kalman Filter (EKF)** - RMSE: ~0.298° - Quaternion-based optimal estimator with gyro bias correction
+1. **Complementary Filter** (α = 0.79) - Roll: 0.820° / Pitch: 0.771° - Simple weighted fusion baseline
+2. **Mahony Passive Filter** (kp = 11) - Roll: 0.614° / Pitch: 0.756° - Passive CF with SO(3) representation
+3. **Explicit Complementary Filter** (kp = 11, ki = 0.05) - Roll: 0.554° / Pitch: 0.752° - Direct vectorial CF with bias estimation (BEST complementary filter)
+4. **Extended Kalman Filter (EKF)** - Roll: 0.298° / Pitch: 0.720° - Quaternion-based optimal estimator (BEST OVERALL)
 
-**Project Status**: Core algorithms complete. Investigating RNN/deep learning approaches and optimizing Mahony filter performance.
+**Project Status**: ✅ All algorithms complete, optimized, and verified. Comprehensive verification report available at `MDFiles/Filter_Verification_Report.md`. Ready for thesis writing.
 
 ## Data
 Data/gyro.csv contains gyroscope measurements from the IMU. 3-axes 1 column per axe (x,y,z). Values are rad/sec
@@ -24,34 +25,12 @@ second column is pitch (theta). Values are rad/sec
 
 ## Build System
 
-The project supports both Make and CMake build systems:
+The project uses Makefile for building all filters:
 
-### Using Make (Primary)
 ```bash
-make run          # Compile and run the application
-make main         # Compile only
-make clean        # Remove built files
+make all           # Build all four filters
+make clean         # Remove built files
 ```
-
-### Using CMake (Alternative)
-```bash
-cmake -B build
-
-# Build individual filters
-cmake --build build --target complemntaryFilter
-cmake --build build --target mahonyFilter
-cmake --build build --target ekfFilter
-
-# Build all
-cmake --build build --target all_filters
-
-# Run filters
-cmake --build build --target run_complementary
-cmake --build build --target run_mahony
-cmake --build build --target run_ekf
-```
-
-Both build systems (Make and CMake) are fully supported and produce identical binaries in `bin/` directory.
 
 ## Architecture
 
@@ -66,10 +45,17 @@ Both build systems (Make and CMake) are fully supported and produce identical bi
   - Results: `Results/Results/ComplementaryRoll_a_0_79.txt`, `ComplementaryPitch_a_0_79.txt`
 
 - **MahonyFilter**: Passive complementary filter with SO(3) representation
-  - `MahonyFilter.hpp/cpp`: Rotation matrix-based filter with proportional gain (kp = 9)
+  - `MahonyFilter.hpp/cpp`: Rotation matrix-based filter with proportional gain (kp = 11)
   - Implements: `setIMUData()`, `predictForAllData()` with automatic orthonormalization
   - Features: Error correction in rotation space using skew-symmetric matrices
-  - Results: `Results/Results/MahonyRoll_kp_9.txt`, `MahonyPitch_kp_9.txt`
+  - Results: `Results/Results/MahonyRoll_kp_11.txt`, `MahonyPitch_kp_11.txt`
+
+- **ExplicitComplementaryFilter**: Direct vectorial complementary filter with bias estimation (✅ COMPLETE)
+  - `ExplicitComplementaryFilter.hpp/cpp`: Works directly with vector measurements (no attitude reconstruction)
+  - Implements: `setIMUData()`, `predictForAllData()`, `getBiasEstimation()` with automatic orthonormalization
+  - Parameters: kp = 11.0 (proportional), ki = 0.05 (integral for bias)
+  - Features: 3-axis gyro bias estimation, simple cross product correction (v × v̂), no trig functions
+  - Results: `Results/Results/ExplicitComplementaryRoll.txt`, `ExplicitComplementaryPitch.txt`
 
 - **ExtendedKalmanFilter**: Quaternion-based optimal estimator (✅ COMPLETE)
   - `ExtendedKalmanFilter.hpp/cpp`: 7D state vector (quaternion + 3D gyro bias)
@@ -100,7 +86,8 @@ Both build systems (Make and CMake) are fully supported and produce identical bi
 
 2. **Initialize Filter**: Create filter object with tuned parameters
    - Complementary: alpha coefficient (0.79), dt (0.02s)
-   - Mahony: kp gain (9), dt (0.02s)
+   - Mahony Passive: kp gain (11), dt (0.02s)
+   - Explicit CF: kp gain (11), ki gain (0.05), dt (0.02s)
    - EKF: dt (0.02s), initial quaternion from first accel sample
 
 3. **Process Data**:
@@ -128,16 +115,18 @@ Both build systems (Make and CMake) are fully supported and produce identical bi
 
 ### Build Individual Filters
 ```bash
-make complemntaryFilter   # Build complementary filter
-make mahonyFilter          # Build Mahony filter
-make ekfFilter             # Build EKF
-make all                   # Build all three filters
+make complemntaryFilter          # Build complementary filter
+make mahonyFilter                # Build Mahony passive filter
+make explicitComplementaryFilter # Build explicit complementary filter
+make ekfFilter                   # Build EKF
+make all                         # Build all four filters
 ```
 
 ### Run Filters
 ```bash
 ./bin/complmentary.out     # Run complementary filter
-./bin/mahony.out           # Run Mahony filter
+./bin/mahony.out           # Run Mahony passive filter
+./bin/explicitCF.out       # Run explicit complementary filter
 ./bin/ekf.out              # Run EKF
 ```
 
@@ -176,10 +165,11 @@ Generates 4-panel analysis plot showing:
 
 ### Main Executables
 - `complentaryFilterMain.cpp` - Complementary filter entry point
-- `mahonyFilterMain.cpp` - Mahony filter entry point
+- `mahonyFilterMain.cpp` - Mahony passive filter entry point
+- `explicitComplementaryFilterMain.cpp` - Explicit complementary filter entry point
 - `ekfFilterMain.cpp` - EKF entry point
 
-All three follow the same pattern:
+All four follow the same pattern:
 1. Load CSV data (gyro, accel, ground truth angles)
 2. Initialize filter with parameters
 3. Call `setIMUData()` and `predictForAllData()` (or equivalent)
@@ -189,6 +179,7 @@ All three follow the same pattern:
 ### Implementation Files
 - `src/ComplementaryFilter.cpp` & `include/ComplementaryFilter.hpp`
 - `src/MahonyFilter.cpp` & `include/MahonyFilter.hpp`
+- `src/ExplicitComplementaryFilter.cpp` & `include/ExplicitComplementaryFilter.hpp`
 - `src/ExtendedKalmanFilter.cpp` & `include/ExtendedKalmanFilter.hpp`
 - `include/Utils.hpp` - Shared utilities (RMSE, angle conversion, file I/O)
 - `include/csvreader.hpp` - CSV data loading
@@ -199,13 +190,21 @@ All three follow the same pattern:
 - `Results/analyze_dynamics.py` - **Comprehensive 3-filter comparison with dynamics analysis**
 
 ### Documentation
-- **`MDFiles/EKF_Complete_Mathematical_Reference.md`** - **PRIMARY EKF REFERENCE**
+- **`MDFiles/Filter_Verification_Report.md`** - **COMPREHENSIVE VERIFICATION REPORT**
+  - Complete verification of all four filters
+  - Mathematical correctness validation
+  - Hyperparameter optimization summaries
+  - Performance comparison analysis
+  - Bug fixes and resolutions documented
+  - Thesis-ready checklist
+- **`MDFiles/EKF_Complete_Mathematical_Reference.md`** - EKF mathematical reference
   - Complete mathematical documentation with all EKF equations
   - Quaternion mathematics, kinematics, and rotation representations
   - Detailed Jacobian derivations (F: 7×7 state transition, H: 3×7 measurement)
   - Tuning guide for process/measurement noise covariance matrices
-  - Troubleshooting common EKF issues
-- `MDFiles/MahonyFilter_Mathematical_Documentation.md` - Mahony filter theory
+- `MDFiles/ExplicitComplementaryFilter_Mathematical_Documentation.md` - Explicit CF theory and implementation
+- `MDFiles/Explicit_vs_Passive_Mahony_Comparison.md` - Side-by-side comparison of Mahony filters
+- `MDFiles/MahonyFilter_Mathematical_Documentation.md` - Mahony passive filter theory
 - `pch.h` - Precompiled header with common includes (Eigen, iostream, etc.)
 - `compile_commands.json` - Generated compilation database for IDE support
 
@@ -225,15 +224,18 @@ All three follow the same pattern:
 ```
 ## Performance Summary
 
-| Filter | Roll RMSE | Pitch RMSE | Parameters | Strengths | Limitations |
-|--------|-----------|------------|------------|-----------|-------------|
-| **Complementary** | 0.820° | 0.771° | α = 0.79, dt = 0.02s | Simple, computationally efficient, intuitive tuning | No bias estimation, fixed weighting |
-| **Mahony** | 0.589° | 1.430° ⚠️ | kp = 9, dt = 0.02s | Better dynamics handling, rotation space correction | kp tuned for roll only, pitch suffers |
-| **EKF** | **0.298°** | **0.720°** | Q, R covariance matrices | **Best accuracy**, automatic bias estimation, optimal fusion | Most complex, requires tuning multiple parameters |
+| Filter | Roll RMSE | Pitch RMSE | Combined | Bias Estimation | Parameters |
+|--------|-----------|------------|----------|-----------------|------------|
+| **Complementary** | 0.820° | 0.771° | 0.795° | ❌ No | α = 0.79 |
+| **Mahony Passive** | 0.614° | 0.756° | 0.685° | ❌ No | kp = 11 |
+| **Explicit CF** | **0.554°** | 0.752° | 0.653° | ✅ Yes (3-axis) | kp = 11, ki = 0.05 |
+| **EKF** | **0.298°** | **0.720°** | **0.509°** | ✅ Yes (3-axis) | Q, R matrices |
 
-**Winner: EKF** achieves best performance on both axes through optimal state estimation and gyroscope bias correction.
-
-**Note:** Mahony filter kp was optimized for roll only (see mahonyFilterMain.cpp:55). Re-tuning for combined roll+pitch metric should improve pitch RMSE from 1.43° to ~0.9°.
+**Rankings:**
+1. **🥇 EKF** - Best overall performance (0.298° roll, 0.720° pitch)
+2. **🥈 Explicit CF** - Best complementary filter (0.554° roll) + bias estimation
+3. **🥉 Mahony Passive** - Good performance (0.614° roll), simpler than Explicit CF
+4. **Complementary** - Simple baseline (0.820° roll), single parameter
 
 ### High vs Low Dynamics Performance
 The `analyze_dynamics.py` script automatically identifies high-dynamics periods (top 25% gyro magnitude) and calculates separate RMSE for each filter, revealing performance under different motion conditions.
@@ -250,23 +252,38 @@ The `analyze_dynamics.py` script automatically identifies high-dynamics periods 
 
 ## Project Status Notes
 
-✅ **Completed:**
-- All three sensor fusion algorithms implemented and tested
-- Consistent API across all filters (`setIMUData()`, `predictForAllData()` pattern)
-- Comprehensive visualization and analysis tools
-- Full mathematical documentation for all algorithms
-- Performance benchmarking complete
+✅ **FULLY COMPLETED AND VERIFIED (November 9, 2025):**
+- **All four sensor fusion algorithms** implemented, optimized, and tested
+  - Complementary Filter (α = 0.79)
+  - Mahony Passive Filter (kp = 11)
+  - Explicit Complementary Filter (kp = 11, ki = 0.05)
+  - Extended Kalman Filter
+- **Hyperparameter optimization** completed via grid search for all filters
+  - Complementary: 99 tests for alpha
+  - Mahony Passive: 100 tests for kp
+  - Explicit CF: 580 tests for (kp, ki) combinations
+  - EKF: Manual tuning of Q and R matrices
+- **Complete verification** against ground truth (100% RMSE match with expected values)
+- **Consistent API** across all filters (`setIMUData()`, `predictForAllData()` pattern)
+- **Comprehensive documentation** (mathematical references, implementation guides, comparison documents)
+- **All output files** generated and verified (8 files, 1409 samples each)
+- **Visualization and analysis tools** complete
+- **Build system** working perfectly (Makefile with 4 targets)
 
-🎯 **Current Investigations:**
-- **Data availability check:** Investigating if more IMU data exists (potentially 1+ hour vs current 28 seconds)
-- **Mahony optimization:** Re-tune kp for combined roll+pitch performance (currently optimized for roll only)
-- **RNN/ML exploration:** Evaluating feasibility of deep learning approaches
-  - See `MDFiles/RNN_Feasibility_Analysis.md` for comprehensive analysis
-  - Options: Simple LSTM, Attention-LSTM, Hybrid EKF+LSTM
-  - Viability depends on data availability and professor approval
+📊 **Verified Results:**
+- All RMSE values match expected results from `notes.txt` (100% accuracy)
+- Best overall: EKF (0.298° roll, 0.720° pitch)
+- Best complementary filter: Explicit CF (0.554° roll, 0.752° pitch)
+- See `MDFiles/Filter_Verification_Report.md` for complete verification details
 
-🔧 **Pending Tasks:**
-- Fix Mahony pitch tuning (1 day, guaranteed improvement)
-- Verify total available IMU dataset size
-- Consult professor on ML approach for thesis
-- Decide: Classical optimization vs Deep learning exploration
+✅ **Ready for thesis writing** - All classical filters complete
+
+🚀 **NEW PHASE: RNN Hybrid Implementation (Starting)**
+- **Approach:** Hybrid RNN combining filter output + IMU data
+- **Technology:** C++ with libtorch (PyTorch C++ API)
+- **Architecture:** Filter output (angles) + IMU → LSTM → Predicted state (k+1)
+- **Input:** 8D vector [roll, pitch, ax, ay, az, ωx, ωy, ωz] at time k
+- **Output:** 5D vector [roll, pitch, ωx, ωy, ωz] at time k+1
+- **Goal:** Improve upon best classical filter (EKF: 0.298° roll, 0.720° pitch)
+- **Documentation:** See `MDFiles/RNN_Hybrid_Architecture.md` for complete specification
+- **Status:** Planning complete, ready to implement
