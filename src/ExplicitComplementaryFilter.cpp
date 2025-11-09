@@ -79,14 +79,15 @@ Eigen::Vector3d ExplicitComplementaryFilter::computeOmegaMeasurement(
     const Eigen::Vector3d& v_measured, const Eigen::Vector3d& v_estimated) const {
 
     // Equation (32c) from paper: ωₘₑₛ = Σᵢ kᵢ(vᵢ × v̂ᵢ)
-    // From equation (34): (ωmes)× = Σ (ki/2)(v̂ᵢvᵢᵀ - vᵢv̂ᵢᵀ) = Pa(R̂M)
-    // Using identity: (ki/2)(v̂vᵀ - vv̂ᵀ) = ki vex(v× × v̂×)
-    // This gives: ωₘₑₛ = 2 * (v × v̂) for single vector with ki=1
+    // For single vector (gravity only), this simplifies to:
+    // ωₘₑₛ = v × v̂
     //
-    // Note: The factor of 2 comes from the relationship between
-    // the skew-symmetric matrix representation and the cross product
+    // Note: Comparing with Mahony passive filter (Equation 7):
+    // Mahony: ω = vex(Pa(R̃)) where R̃ = R̂ᵀRy
+    // Explicit: ω = v × v̂ where v = Rᵀv₀, v̂ = R̂ᵀv₀
+    // These should be equivalent up to the ki weighting in Eq 34
 
-    return 2.0 * v_measured.cross(v_estimated);
+    return v_measured.cross(v_estimated);
 }
 
 void ExplicitComplementaryFilter::orthonormalize() {

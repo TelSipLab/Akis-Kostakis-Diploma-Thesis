@@ -11,7 +11,7 @@ int main() {
     bool calculateBestAlpha = false;
 
     const double dt = 0.02;
-    const double alpha = 0.79; // Calculated via loop
+    const double alpha = 0.79; // Calculated via loop - best value
     const int DISPLAY_SAMPLES = 10;
 
     // Load data

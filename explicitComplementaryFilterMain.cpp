@@ -6,12 +6,13 @@
 #include <iostream>
 
 int main() {
+    bool calculateBestKs = false;
+
     std::cout << std::fixed << std::setprecision(6);
 
-    // Filter parameters (recommended values from Mahony et al. 2008, Section VI)
-    const double dt = 0.02;      // Sample time (50 Hz)
-    const double kp = 5.0;       // Proportional gain (testing higher value)
-    const double ki = 0.5;       // Integral gain
+    const double dt = 0.02;
+    const double kp = 11.0;  // Proportional gain - best value
+    const double ki = 0.05;  // Integral gain - best value
 
     std::cout << "Explicit Complementary Filter Test\n";
     std::cout << "===================================\n\n";
@@ -36,44 +37,105 @@ int main() {
     Utils::convertToDeg(pitchGroundTruth);
 
     const int numSamples = static_cast<int>(gyroMeasurements.rows());
-
-    // Display configuration
-    std::cout << "Dataset: " << numSamples << " samples\n";
-    std::cout << "Time step (dt): " << dt << " seconds\n";
-    std::cout << "Proportional gain (kp): " << kp << " rad/s\n";
-    std::cout << "Integral gain (ki): " << ki << " rad/s\n\n";
-
-    // Create and run filter
     ExplicitComplementaryFilter explicitCF(dt, kp, ki);
-    explicitCF.setIMUData(gyroMeasurements, accelMeasurements);
 
-    std::cout << "Running filter...\n";
-    explicitCF.predictForAllData();
-    std::cout << "Filter complete!\n\n";
+    if(calculateBestKs) {
+        double bestKp = 1.0;
+        double bestKi = 0.1;
 
-    // Convert results to degrees
+        double bestCombinedRMSE = 100.00;
+        double bestRollRMSE = 0.0;
+        double bestPitchRMSE = 0.0;
+
+        std::cout << "Searching for best kp and ki values...\n";
+        std::cout << "Testing kp from 1.0 to 15.0 (step 0.5)\n";
+        std::cout << "Testing ki from 0.05 to 1.0 (step 0.05)\n\n";
+
+        int totalTests = 0;
+        int printCounter = 0;
+
+        // Grid search over kp and ki with finer granularity
+        // kp: 1.0 to 15.0 in steps of 0.5 (29 values)
+        // ki: 0.05 to 1.0 in steps of 0.05 (20 values)
+        // Total: 29 * 20 = 580 combinations
+        for(int kp_times_2 = 2; kp_times_2 <= 30; kp_times_2++) {
+            double kp_test = kp_times_2 * 0.5;
+
+            for(int ki_times_20 = 1; ki_times_20 <= 20; ki_times_20++) {
+                double ki_test = ki_times_20 * 0.05;
+
+                ExplicitComplementaryFilter explicitTmp(dt, kp_test, ki_test);
+                explicitTmp.setIMUData(gyroMeasurements, accelMeasurements);
+                explicitTmp.predictForAllData();
+
+                // Convert to degrees for RMSE calculation
+                Utils::convertToDeg(explicitTmp.getRollEstimationNonConst());
+                Utils::convertToDeg(explicitTmp.getPitchEstimationNonConst());
+
+                double rollRMSE = Utils::rmse(rollGroundTruth, explicitTmp.getRollEstimation());
+                double pitchRMSE = Utils::rmse(pitchGroundTruth, explicitTmp.getPitchEstimation());
+
+                // Combined metric: average of roll and pitch RMSE
+                double combinedRMSE = (rollRMSE + pitchRMSE) / 2.0;
+
+                totalTests++;
+
+                if (combinedRMSE < bestCombinedRMSE) {
+                    bestCombinedRMSE = combinedRMSE;
+                    bestRollRMSE = rollRMSE;
+                    bestPitchRMSE = pitchRMSE;
+                    bestKp = kp_test;
+                    bestKi = ki_test;
+
+                    // Print when we find a new best
+                    std::cout << "NEW BEST! kp=" << kp_test << ", ki=" << ki_test
+                              << " -> Roll: " << rollRMSE
+                              << "°, Pitch: " << pitchRMSE
+                              << "°, Combined: " << combinedRMSE << "°\n";
+                }
+
+                // Print progress every 50 tests
+                printCounter++;
+                if (printCounter % 50 == 0) {
+                    std::cout << "Progress: " << totalTests << " tests completed...\n";
+                }
+            }
+        }
+
+        std::cout << "\nTotal tests: " << totalTests << "\n";
+
+        std::cout << "\n=== BEST RESULTS ===\n";
+        std::cout << "Best kp: " << bestKp << "\n";
+        std::cout << "Best ki: " << bestKi << "\n";
+        std::cout << "Roll RMSE:  " << bestRollRMSE << " degrees\n";
+        std::cout << "Pitch RMSE: " << bestPitchRMSE << " degrees\n";
+        std::cout << "Combined RMSE: " << bestCombinedRMSE << " degrees (average)\n\n";
+
+        return 1;
+    } else {
+        // Display configuration
+        std::cout << "Dataset: " << numSamples << " samples\n";
+        std::cout << "Time step (dt): " << dt << " seconds\n";
+        std::cout << "Proportional gain (kp): " << kp << " rad/s\n";
+        std::cout << "Integral gain (ki): " << ki << " rad/s\n\n";
+
+        // Create and run filter
+        explicitCF.setIMUData(gyroMeasurements, accelMeasurements);
+        explicitCF.predictForAllData();
+    }
+
+    // Convert results to degrees 
     Utils::convertToDeg(explicitCF.getRollEstimationNonConst());
     Utils::convertToDeg(explicitCF.getPitchEstimationNonConst());
 
-    // Calculate and display error metrics
-    double rollRMSE = Utils::rmse(rollGroundTruth, explicitCF.getRollEstimation());
-    double rollMEA = Utils::mea(rollGroundTruth, explicitCF.getRollEstimation());
-    double pitchRMSE = Utils::rmse(pitchGroundTruth, explicitCF.getPitchEstimation());
-    double pitchMEA = Utils::mea(pitchGroundTruth, explicitCF.getPitchEstimation());
+    std::cout << "\n=== Error Metrics (all " << numSamples << " samples) in degrees ===\n";
+    std::cout << "Roll RMSE:  " << Utils::rmse(rollGroundTruth, explicitCF.getRollEstimation()) << " degrees\n";
+    std::cout << "Roll MEA:   " << Utils::mea(rollGroundTruth, explicitCF.getRollEstimation()) << " degrees\n";
+    std::cout << "Pitch RMSE: " << Utils::rmse(pitchGroundTruth, explicitCF.getPitchEstimation()) << " degrees\n";
+    std::cout << "Pitch MEA:  " << Utils::mea(pitchGroundTruth, explicitCF.getPitchEstimation()) << " degrees\n";
 
-    std::cout << "=== Error Metrics (all " << numSamples << " samples) ===\n";
-    std::cout << "Roll RMSE:  " << rollRMSE << " degrees\n";
-    std::cout << "Roll MEA:   " << rollMEA << " degrees\n";
-    std::cout << "Pitch RMSE: " << pitchRMSE << " degrees\n";
-    std::cout << "Pitch MEA:  " << pitchMEA << " degrees\n";
-    std::cout << "Combined RMSE: " << (rollRMSE + pitchRMSE) / 2.0 << " degrees\n\n";
-
-    // Display estimated gyro bias
-    Eigen::Vector3d bias = explicitCF.getBiasEstimation();
-    std::cout << "=== Estimated Gyro Bias ===\n";
-    std::cout << "Bias X: " << bias(0) << " rad/s\n";
-    std::cout << "Bias Y: " << bias(1) << " rad/s\n";
-    std::cout << "Bias Z: " << bias(2) << " rad/s\n";
+    Utils::printVecToFile(explicitCF.getRollEstimation(), "Results/Results/ExplicitComplementaryRoll.txt");
+    Utils::printVecToFile(explicitCF.getPitchEstimation(), "Results/Results/ExplicitComplementaryPitch.txt");
 
     return 0;
 }

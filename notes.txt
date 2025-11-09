@@ -1,22 +1,4 @@
-Mahony Passive Complementary Filter Test
-
-Dataset: 1409 samples
-Time step (dt): 0.020000 seconds
-Proportional gain (kP): 9.000000
-
-
-=== Error Metrics (all 1409 samples) in degrees ===
-Roll RMSE:  0.588950 degrees
-Roll MEA:   0.301615 degrees
-Pitch RMSE: 1.429846 degrees
-Pitch MEA:  0.774373 degrees
-
-
-
-
-
--------
-
+------------------------------
 Complementary Filter Test
 
 Dataset: 1409 samples
@@ -32,6 +14,8 @@ Pitch MEA:  0.465156 degrees
 
 
 
+---------------------------
+
 Extended Kalman Filter Test
 
 Dataset: 1409 samples
@@ -45,3 +29,33 @@ Roll MEA:   0.210488 degrees
 Pitch RMSE: 0.720002 degrees
 Pitch MEA:  0.466126 degrees
 
+------------------------
+
+Mahony Passive Complementary Filter Test
+
+Dataset: 1409 samples
+Time step (dt): 0.020000 seconds
+Proportional gain (kP): 11.000000
+
+
+=== Error Metrics (all 1409 samples) in degrees ===
+Roll RMSE:  0.613644 degrees
+Roll MEA:   0.301483 degrees
+Pitch RMSE: 0.755851 degrees
+Pitch MEA:  0.434362 degrees
+
+---------------------------------------------
+
+Explicit Complementary Filter Test
+
+Dataset: 1409 samples
+Time step (dt): 0.020000 seconds
+Proportional gain (kp): 11.000000 rad/s
+Integral gain (ki): 0.050000 rad/s
+
+
+=== Error Metrics (all 1409 samples) in degrees ===
+Roll RMSE:  0.553902 degrees
+Roll MEA:   0.257668 degrees
+Pitch RMSE: 0.751673 degrees
+Pitch MEA:  0.427476 degrees

@@ -29,6 +29,7 @@ ExtendedKalmanFilter::ExtendedKalmanFilter(double dt, const Eigen::Vector3d& ini
     P.block<3, 3>(4, 4) *= 0.01; // Bias uncertainty
 
     // Process noise covariance (7x7)
+    // TODO check these values
     Q = Eigen::MatrixXd::Identity(7, 7);
     Q.block<4, 4>(0, 0) *= 0.001;  // Quaternion process noise
     Q.block<3, 3>(4, 4) *= 0.0001; // Bias process noise
