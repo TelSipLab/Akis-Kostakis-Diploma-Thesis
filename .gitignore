@@ -11,3 +11,4 @@ AttitudeEstimation.vcxproj.user
 .idea/
 ReportLink.lnk
 cmake-build/
+.claude/
