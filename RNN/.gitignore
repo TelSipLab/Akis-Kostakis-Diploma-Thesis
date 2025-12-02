@@ -1,1 +1,3 @@
-python/venv
+Python/venv
+*.o
+*.out
