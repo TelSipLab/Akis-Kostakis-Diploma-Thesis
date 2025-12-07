@@ -1,15 +1,35 @@
-# Simple Makefile for RNN example
+# Simple Makefile for RNN/LSTM examples
 
-all: example
+# Libtorch paths
+LIBTORCH_PATH = /home/kostakis/dev/libtorch
+LIBTORCH_INCLUDE = -I$(LIBTORCH_PATH)/include -I$(LIBTORCH_PATH)/include/torch/csrc/api/include
+LIBTORCH_LIBS = -L$(LIBTORCH_PATH)/lib -ltorch -ltorch_cpu -lc10
+LIBTORCH_RPATH = -Wl,-rpath,$(LIBTORCH_PATH)/lib
+
+CSVLIBRARY_INCLUDE = -I../include
+
+# Compiler flags
+CXX = g++
+CXXFLAGS = -std=c++17 -g -O0 -D_GLIBCXX_USE_CXX11_ABI=1
+
+all: example lstmExample lstm
 
 example: mainExample.cpp
-	g++ -std=c++17 -g -O0 -D_GLIBCXX_USE_CXX11_ABI=1 \
-		-I/home/kostakis/dev/libtorch/include \
-		-I/home/kostakis/dev/libtorch/include/torch/csrc/api/include \
+	$(CXX) $(CXXFLAGS) $(LIBTORCH_INCLUDE) \
 		mainExample.cpp -o example.out \
-		-L/home/kostakis/dev/libtorch/lib -ltorch -ltorch_cpu -lc10 \
-		-Wl,-rpath,/home/kostakis/dev/libtorch/lib
-clean:
-	rm -f example.out
+		$(LIBTORCH_LIBS) $(LIBTORCH_RPATH)
 
-.PHONY: clean
+lstmExample: lstmExample.cpp
+	$(CXX) $(CXXFLAGS) $(LIBTORCH_INCLUDE) \
+		lstmExample.cpp -o example.out \
+		$(LIBTORCH_LIBS) $(LIBTORCH_RPATH)
+
+lstm: lstmMain.cpp
+	$(CXX) $(CXXFLAGS) $(LIBTORCH_INCLUDE) $(CSVLIBRARY_INCLUDE) \
+		lstmMain.cpp -o lstm.out \
+		$(LIBTORCH_LIBS) $(LIBTORCH_RPATH)
+
+clean:
+	rm -f example.out lstmExample.out
+
+.PHONY: all clean

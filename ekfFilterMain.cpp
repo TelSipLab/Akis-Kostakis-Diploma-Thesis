@@ -46,7 +46,10 @@ int main() {
 
     ekf.predictForAllData();
 
-    // Convert results to degrees
+    Utils::printVecToFile(ekf.getRollEstimation(), "Results/Results/EkfRollRad.txt");
+    Utils::printVecToFile(ekf.getPitchEstimation(), "Results/Results/EkfPitchRad.txt");
+
+    // Convert results(RAD) to degrees
     Utils::convertToDeg(ekf.getRollEstimationNonConst());
     Utils::convertToDeg(ekf.getPitchEstimationNonConst());
 

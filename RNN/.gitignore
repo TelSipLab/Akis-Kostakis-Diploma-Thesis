@@ -1,5 +1,5 @@
 Python/venv
 *.o
 *.out
-Results/
-Data/
+Results
+Data
