@@ -128,8 +128,8 @@ Eigen::VectorXd pitch = mahony.getPitchEstimation();
 - **Size**: 3397 samples
 - **Sampling rate**: Ts = 0.03 sec (33.3 Hz)
 - **Columns** (9 total):
-  - **Columns 0-2**: Ground truth angles (roll, pitch, yaw) - likely in radians (pending confirmation)
-  - **Columns 3-5**: Gyroscope measurements (roll, pitch, yaw) - rad/s
+  - **Columns 0-2**: Ground truth angles (roll, pitch, yaw) - **radians** (confirmed by professor)
+  - **Columns 3-5**: Gyroscope measurements (roll, pitch, yaw) - **rad/s** (confirmed by professor)
   - **Columns 6-8**: Control torques (roll, pitch, yaw) - from PID controller, NOT accelerometer
 
 **Data Flow:**
