@@ -134,7 +134,7 @@ int main() {
     // CREATE MODEL
     // ==========================================
     int outputSize = windowSize * NUM_OUTPUT_FEATURES;  // 10 * 3 = 30
-    auto model = std::make_shared<LSTMNetwork>(NUM_INPUT_FEATURES, 64, outputSize);
+    auto model = std::make_shared<LSTMNetwork>(NUM_INPUT_FEATURES, 128, outputSize);
 
     std::cout << "=== Model Created ===" << std::endl;
     std::cout << "Architecture: Input(" << NUM_INPUT_FEATURES << ") -> LSTM(64) -> FC(" << outputSize << ")" << std::endl;
@@ -215,6 +215,19 @@ int main() {
     // Get predictions for all samples
     Tensor allPredictions = model->forward(X);  // [3387, 30]
     allPredictions = allPredictions.view({trainingSamples, windowSize, NUM_OUTPUT_FEATURES});  // [3387, 10, 3]
+
+    // Calculate overall RMSE first
+    Tensor allDiff = allPredictions - y;
+    Tensor allSquaredDiff = allDiff.pow(2);
+    Tensor overallMSE = allSquaredDiff.mean();
+    Tensor overallRMSE = overallMSE.sqrt();
+
+    std::cout << "Overall RMSE (all steps, all angles): "
+              << std::fixed << std::setprecision(6)
+              << overallRMSE.item<double>() << " rad = "
+              << std::setprecision(3)
+              << overallRMSE.item<double>() * 180.0 / M_PI << " degrees" << std::endl;
+    std::cout << std::endl;
 
     std::cout << "Step | Roll (rad) | Pitch (rad) | Yaw (rad)" << std::endl;
     std::cout << "-----+------------+-------------+-----------" << std::endl;
