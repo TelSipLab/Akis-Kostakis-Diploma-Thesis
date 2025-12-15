@@ -20,9 +20,20 @@ public:
     }
 
     Tensor forward(Tensor X) {
+        // LSTM expects 3D input: [batch, seq_len, features]
+        // If input is 2D [batch, features], add seq_len=1 dimension
+        if (X.dim() == 2) {
+            X = X.unsqueeze(1);  // [batch, features] → [batch, 1, features]
+        }
+
         auto lstmOutput = lstm->forward(X);
-        auto out = std::get<0>(lstmOutput); // TODO Check what is the second value of the tuple
-        out = fc->forward(out);
+        auto out = std::get<0>(lstmOutput); // Get output, shape: [batch, seq_len, hidden]
+
+        // Take last timestep output
+        out = out.select(1, -1);  // [batch, seq_len, hidden] → [batch, hidden]
+
+        // Pass through FC layer
+        out = fc->forward(out);  // [batch, hidden] → [batch, output_size]
         return out;
     }
 
@@ -51,73 +62,97 @@ private:
 };
 
 int main() {
-    int numberOfFeatures = 5; // CHECK MEEEEEE
-    // [omegax], [omegay], [omegaz], [ekfPitchRad], [efkRollRad] 
+    const int windowSize = 10;  // Predict next 10 timesteps
+    const int NUM_INPUT_FEATURES = 9;   // 9 columns in dataset_1.csv
+    const int NUM_OUTPUT_FEATURES = 3;  // Predict 3 angles (roll, pitch, yaw)
 
-    CsvReader gyroData("Data/gyro.csv");
-    CsvReader filterPitchData("Results/Results/EkfPitchRad.txt");
-    CsvReader filterRollData("Results/Results/EkfRollRad.txt");
+    std::cout << "=== LSTM Multi-Step Ahead Prediction ===" << std::endl;
+    std::cout << "Configuration:" << std::endl;
+    std::cout << "  Prediction horizon (N): " << windowSize << " timesteps" << std::endl;
+    std::cout << "  Input features: " << NUM_INPUT_FEATURES << std::endl;
+    std::cout << "  Output features: " << NUM_OUTPUT_FEATURES << std::endl;
+    std::cout << std::endl;
 
-    gyroData.read();
-    gyroData.printStats();
+    CsvReader datasetReader("Data/dataset_1.csv");
+    datasetReader.read();
+    datasetReader.printStats();
 
-    filterPitchData.read();
-    filterPitchData.printStats();
+    Eigen::MatrixXd dataset = datasetReader.getEigenData();
+    int totalSamples = dataset.rows();
 
-    filterRollData.read();
-    filterRollData.printStats();
+    std::cout << "Dataset loaded: " << totalSamples << " samples" << std::endl;
+    std::cout << "Columns: [roll_gt, pitch_gt, yaw_gt, gyro_r, gyro_p, gyro_y, torque_r, torque_p, torque_y]" << std::endl;
+    std::cout << std::endl;
 
-    Eigen::MatrixXd gyroMeasurements = gyroData.getEigenData();
-    Eigen::MatrixXd filterResultsPitchRad = filterPitchData.getEigenData();
-    Eigen::MatrixXd filterResultsRollRad = filterRollData.getEigenData();
+    int trainingSamples = totalSamples - windowSize;  // Can't use last N rows as input
+    std::cout << "Number of training samples: " << trainingSamples << std::endl;
 
-    if(gyroMeasurements.rows() != filterResultsRollRad.rows()) {
-        std::cout << "Size mis-match \n";
-        exit(-1);
+    // Convert dataset to tensor
+    Tensor datasetTensor = LSTMNetwork::eigenToTensor(dataset);
+    std::cout << "Dataset tensor shape: " << datasetTensor.sizes() << std::endl;
+
+    // Pre-allocate X and y tensors
+    auto options = torch::TensorOptions().dtype(torch::kDouble);
+    Tensor X = torch::zeros({trainingSamples, NUM_INPUT_FEATURES}, options);
+    Tensor y = torch::zeros({trainingSamples, windowSize, NUM_OUTPUT_FEATURES}, options);
+
+    // Pre-extract angle columns (first 3 columns) for efficiency
+    Tensor anglesTensor = datasetTensor.slice(1, 0, NUM_OUTPUT_FEATURES);
+    // Shape: [3397, 3] - all timesteps, angles only
+
+    // Create samples (single loop - much cleaner!)
+    for (int i = 0; i < trainingSamples; i++) {
+        // Input: all 9 features at timestep i
+        X[i] = datasetTensor[i];
+
+        // Target: next N timesteps, angles only
+        y[i] = anglesTensor.slice(0, i+1, i+windowSize+1);  // Rows [i+1 to i+N]
     }
 
-    Eigen::MatrixXd matrixInputArguments;    
-    matrixInputArguments.resize(gyroMeasurements.rows(), numberOfFeatures);
+    std::cout << std::endl;
+    std::cout << "=== Data Shapes ===" << std::endl;
+    std::cout << "X (inputs):  " << X.sizes() << std::endl;
+    std::cout << "y (targets): " << y.sizes() << std::endl;
+    std::cout << std::endl;
 
-    for(int i = 0; i < gyroMeasurements.rows(); i++) {
-        matrixInputArguments.row(i) <<  gyroMeasurements(i, 0),
-                                        gyroMeasurements(i, 1),
-                                        gyroMeasurements(i, 2),
-                                        filterResultsPitchRad(i), filterResultsRollRad(i);
-    }
+    // ==========================================
+    // VERIFY DATA
+    // ==========================================
+    std::cout << "=== Data Verification ===" << std::endl;
+    std::cout << "First input sample (timestep 0):" << std::endl;
+    std::cout << X[0] << std::endl;
+    std::cout << std::endl;
 
-    std::cout << "Populated eigen array: (" << matrixInputArguments.rows() << "X"
-                << matrixInputArguments.cols() << "). Will be used as tensor input \n";
+    std::cout << "First target (predict timesteps 1-10, angles only):" << std::endl;
+    std::cout << "Shape: " << y[0].sizes() << std::endl;
+    std::cout << "First 3 predictions:" << std::endl;
+    std::cout << y[0].slice(0, 0, 3) << std::endl;
+    std::cout << std::endl;
 
-    Tensor allInputDataTensor = LSTMNetwork::eigenToTensor(matrixInputArguments);
+    // // ==========================================
+    // // TEST MODEL (Optional - just forward pass)
+    // // ==========================================
+    // std::cout << "=== Testing Model Architecture ===" << std::endl;
 
-    std::cout << "X shape: " << allInputDataTensor.sizes() << std::endl;
-    std::cout << allInputDataTensor[-1] << std::endl;  // Output: 5
-    std::cout << "Last row of Eigen matrix:\n" << matrixInputArguments.row(matrixInputArguments.rows()-1) << std::endl;
-    
-    auto model = std::make_shared<LSTMNetwork>(numberOfFeatures,10,2);
+    // // Model output should be [batch, N*3] or we reshape to [batch, N, 3]
+    int outputSize = windowSize * NUM_OUTPUT_FEATURES;  // 10 * 3 = 30
+    auto model = std::make_shared<LSTMNetwork>(NUM_INPUT_FEATURES, 64, outputSize);
 
-    // TEST A SAMPLE
-    // auto tmpTensorInput = createdTensor.index({0}).unsqueeze(0).unsqueeze(0);
-    // auto output = model->forward(tmpTensorInput);
-    
-    // std::cout << "Test output shape: " << output.sizes() << std::endl;
-    // std::cout << "Test output:\n" << output << std::endl;
+    // // Test with first sample
+    Tensor testInput = X[0].unsqueeze(0);  // Add batch dimension: [1, 9]
+    std::cout << "Test input shape: " << testInput.sizes() << std::endl;
 
+    Tensor testOutput = model->forward(testInput);
+    std::cout << "Test output shape: " << testOutput.sizes() << std::endl;
 
-    Tensor X = allInputDataTensor.unsqueeze(0);  // Add batch dimension
-    std::cout << "Input shape: " << X.sizes() << std::endl;  // [1, 1409, 5]
+    // Reshape output to [batch, N, 3]
+    Tensor reshapedOutput = testOutput.view({-1, windowSize, NUM_OUTPUT_FEATURES});
+    std::cout << "Reshaped output: " << reshapedOutput.sizes() << std::endl;
+    std::cout << std::endl;
+    std::cout << "Prediction output: " << reshapedOutput << std::endl;
 
-    Tensor output = model->forward(X);
-    std::cout << "Output shape: " << output.sizes() << std::endl;  // [1, 1409, 2]
-    
-    // Remove batch dimension to get predictions
-    Tensor predictions = output.squeeze(0);  // [1409, 2]
-    std::cout << "Predictions shape: " << predictions.sizes() << std::endl;
-
-    // Show first and last predictions
-    std::cout << "\nFirst prediction: " << predictions[0] << std::endl;
-    std::cout << "Last prediction:  " << predictions[-1] << std::endl;
+    // std::cout << "=== Data preparation complete! ===" << std::endl;
+    // std::cout << "Ready for training implementation." << std::endl;
 
     return 0;
 }
