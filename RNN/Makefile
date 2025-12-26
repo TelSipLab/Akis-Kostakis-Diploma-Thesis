@@ -12,7 +12,7 @@ CSVLIBRARY_INCLUDE = -I../include
 CXX = g++
 CXXFLAGS = -std=c++17 -g -O0 -D_GLIBCXX_USE_CXX11_ABI=1
 
-all: example lstmExample lstm
+all: example lstmExample lstm lstmEval
 
 example: mainExample.cpp
 	$(CXX) $(CXXFLAGS) $(LIBTORCH_INCLUDE) \
@@ -27,6 +27,11 @@ lstmExample: lstmExample.cpp
 lstm: lstmMain.cpp
 	$(CXX) $(CXXFLAGS) $(LIBTORCH_INCLUDE) $(CSVLIBRARY_INCLUDE) \
 		lstmMain.cpp -o lstm.out \
+		$(LIBTORCH_LIBS) $(LIBTORCH_RPATH)
+
+lstmEval: lstmEval.cpp
+	$(CXX) $(CXXFLAGS) $(LIBTORCH_INCLUDE) $(CSVLIBRARY_INCLUDE) \
+		lstmEval.cpp -o lstmEval.out \
 		$(LIBTORCH_LIBS) $(LIBTORCH_RPATH)
 
 clean:
