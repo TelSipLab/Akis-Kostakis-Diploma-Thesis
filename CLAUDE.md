@@ -129,8 +129,10 @@ Eigen::VectorXd pitch = mahony.getPitchEstimation();
 - **Sampling rate**: Ts = 0.03 sec (33.3 Hz)
 - **Columns** (9 total):
   - **Columns 0-2**: Ground truth angles (roll, pitch, yaw) - **radians** (confirmed by professor)
-  - **Columns 3-5**: Gyroscope measurements (roll, pitch, yaw) - **rad/s** (confirmed by professor)
-  - **Columns 6-8**: Control torques (roll, pitch, yaw) - from PID controller, NOT accelerometer
+  - **Columns 3-5**: Gyroscope angular velocities (ω_roll, ω_pitch, ω_yaw) - **rad/s** (confirmed by professor)
+    - These are rotation rates AROUND the roll/pitch/yaw axes, NOT angle measurements
+    - ω_roll = d(roll)/dt, ω_pitch = d(pitch)/dt, ω_yaw = d(yaw)/dt
+  - **Columns 6-8**: Control torques (τ_roll, τ_pitch, τ_yaw) - from PID controller, NOT accelerometer
 
 **Data Flow:**
 - Each row represents a complete state at one timestep
@@ -185,9 +187,9 @@ The `Utils` class provides critical operations for attitude estimation:
 
 **Input at timestep k** (single timestep, 9 features):
 ```
-Vector [9] = [roll_gt(k), pitch_gt(k), yaw_gt(k),          # Ground truth angles
-              gyro_roll(k), gyro_pitch(k), gyro_yaw(k),     # Gyro measurements
-              torque_roll(k), torque_pitch(k), torque_yaw(k)] # Control torques
+Vector [9] = [roll_gt(k), pitch_gt(k), yaw_gt(k),          # Ground truth angles (rad)
+              ω_roll(k), ω_pitch(k), ω_yaw(k),              # Gyro angular velocities (rad/s)
+              τ_roll(k), τ_pitch(k), τ_yaw(k)]              # Control torques
 ```
 
 **Output for timesteps k+1 to k+N** (multi-step ahead):

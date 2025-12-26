@@ -1,7 +1,8 @@
+#include "csvreader.hpp"
+
 #include <string>
 #include <iostream>
 #include <iomanip>
-#include "csvreader.hpp"
 
 #include <torch/torch.h>
 
@@ -63,7 +64,7 @@ private:
 };
 
 int main() {
-    const int windowSize = 5;  // Predict next 10 timesteps
+    const int windowSize = 5;           // Predict next 5 timesteps
     const int NUM_INPUT_FEATURES = 9;   // 9 columns in dataset_1.csv
     const int NUM_OUTPUT_FEATURES = 3;  // Predict 3 angles (roll, pitch, yaw)
 
@@ -85,8 +86,8 @@ int main() {
     std::cout << "Columns: [roll_gt, pitch_gt, yaw_gt, gyro_r, gyro_p, gyro_y, torque_r, torque_p, torque_y]" << std::endl;
     std::cout << std::endl;
 
-    int trainingSamples = totalSamples - windowSize;  // Can't use last N rows as input
-    std::cout << "Number of training samples: " << trainingSamples << std::endl;
+    int trainingSamples = totalSamples - windowSize;  // Remove windowSize from the training sample
+    std::cout << "Number of training samples: " << trainingSamples  << " after removing windowSize" << std::endl;
 
     // Convert dataset to tensor
     Tensor datasetTensor = LSTMNetwork::eigenToTensor(dataset);
@@ -97,9 +98,10 @@ int main() {
     Tensor X = torch::zeros({trainingSamples, NUM_INPUT_FEATURES}, options);
     Tensor y = torch::zeros({trainingSamples, windowSize, NUM_OUTPUT_FEATURES}, options);
 
-    // Pre-extract angle columns (first 3 columns) for efficiency
+    // Angles tensor containg the ground truth values
     Tensor anglesTensor = datasetTensor.slice(1, 0, NUM_OUTPUT_FEATURES);
-    // Shape: [3397, 3] - all timesteps, angles only
+    std::cout << "Angles tensor shape: " << anglesTensor.sizes() << std::endl;
+    // Shape: [3397, 3]
 
     // Create samples (single loop - much cleaner!)
     for (int i = 0; i < trainingSamples; i++) {
@@ -116,9 +118,7 @@ int main() {
     std::cout << "y (targets): " << y.sizes() << std::endl;
     std::cout << std::endl;
 
-    // ==========================================
     // VERIFY DATA
-    // ==========================================
     std::cout << "=== Data Verification ===" << std::endl;
     std::cout << "First input sample (timestep 0):" << std::endl;
     std::cout << X[0] << std::endl;
@@ -130,19 +130,15 @@ int main() {
     std::cout << y[0].slice(0, 0, 3) << std::endl;
     std::cout << std::endl;
 
-    // ==========================================
     // CREATE MODEL
-    // ==========================================
-    int outputSize = windowSize * NUM_OUTPUT_FEATURES;  // 10 * 3 = 30
+    int outputSize = windowSize * NUM_OUTPUT_FEATURES;
     auto model = std::make_shared<LSTMNetwork>(NUM_INPUT_FEATURES, 128, outputSize);
 
     std::cout << "=== Model Created ===" << std::endl;
     std::cout << "Architecture: Input(" << NUM_INPUT_FEATURES << ") -> LSTM(64) -> FC(" << outputSize << ")" << std::endl;
     std::cout << std::endl;
 
-    // ==========================================
     // TRAINING SETUP
-    // ==========================================
     const int batchSize = 32;
     const int numEpochs = 300;
     const double learningRate = 0.001;
@@ -158,9 +154,7 @@ int main() {
     std::cout << "Loss function: MSE" << std::endl;
     std::cout << std::endl;
 
-    // ==========================================
     // TRAINING LOOP
-    // ==========================================
     std::cout << "=== Starting Training ===" << std::endl;
     model->train();  // Set model to training mode
 
@@ -168,7 +162,7 @@ int main() {
         double epochLoss = 0.0;
         int numBatches = 0;
 
-        // Batch processing
+        // Traing per batch
         for (int i = 0; i < trainingSamples; i += batchSize) {
             int currentBatchSize = std::min(batchSize, trainingSamples - i);
 
@@ -205,9 +199,7 @@ int main() {
     std::cout << "=== Training Complete! ===" << std::endl;
     std::cout << std::endl;
 
-    // ==========================================
     // EVALUATION - RMSE PER STEP
-    // ==========================================
     std::cout << "=== Evaluating RMSE for each prediction step ===" << std::endl;
     model->eval();  // Set model to evaluation mode
     torch::NoGradGuard no_grad;
@@ -216,64 +208,91 @@ int main() {
     Tensor allPredictions = model->forward(X);  // [3387, 30]
     allPredictions = allPredictions.view({trainingSamples, windowSize, NUM_OUTPUT_FEATURES});  // [3387, 10, 3]
 
-    // Calculate overall RMSE first
+    // Calculate overall metrics
     Tensor allDiff = allPredictions - y;
-    Tensor allSquaredDiff = allDiff.pow(2);
-    Tensor overallMSE = allSquaredDiff.mean();
-    Tensor overallRMSE = overallMSE.sqrt();
+    Tensor overallRMSE = allDiff.pow(2).mean().sqrt();
+    Tensor overallMAE = allDiff.abs().mean();
 
-    std::cout << "Overall RMSE (all steps, all angles): "
-              << std::fixed << std::setprecision(6)
+    std::cout << "Overall Metrics:" << std::endl;
+    std::cout << "  RMSE: " << std::fixed << std::setprecision(6)
               << overallRMSE.item<double>() << " rad = "
-              << std::setprecision(3)
-              << overallRMSE.item<double>() * 180.0 / M_PI << " degrees" << std::endl;
+              << std::setprecision(3) << overallRMSE.item<double>() * 180.0 / M_PI << " deg" << std::endl;
+    std::cout << "  MAE:  " << std::fixed << std::setprecision(6)
+              << overallMAE.item<double>() << " rad = "
+              << std::setprecision(3) << overallMAE.item<double>() * 180.0 / M_PI << " deg" << std::endl;
     std::cout << std::endl;
 
-    std::cout << "Step | Roll (rad) | Pitch (rad) | Yaw (rad)" << std::endl;
-    std::cout << "-----+------------+-------------+-----------" << std::endl;
+    // // RMSE per step
+    // std::cout << "=== RMSE per step ===" << std::endl;
+    // std::cout << "Step | Roll (rad) | Pitch (rad) | Yaw (rad)" << std::endl;
+    // std::cout << "-----+------------+-------------+-----------" << std::endl;
+    // for (int step = 0; step < windowSize; step++) {
+    //     Tensor stepPred = allPredictions.select(1, step);
+    //     Tensor stepTarget = y.select(1, step);
+    //     Tensor rmse = (stepPred - stepTarget).pow(2).mean(0).sqrt();
+    //     auto acc = rmse.accessor<double, 1>();
+    //     std::cout << std::setw(4) << (step + 1) << " | "
+    //               << std::fixed << std::setprecision(6)
+    //               << std::setw(10) << acc[0] << " | "
+    //               << std::setw(11) << acc[1] << " | "
+    //               << std::setw(9) << acc[2] << std::endl;
+    // }
+    // std::cout << std::endl;
 
-    for (int step = 0; step < windowSize; step++) {
-        // Extract predictions and targets for this step
-        Tensor stepPred = allPredictions.select(1, step);  // [3387, 3]
-        Tensor stepTarget = y.select(1, step);             // [3387, 3]
+    // // MAE per step
+    // std::cout << "=== MAE per step ===" << std::endl;
+    // std::cout << "Step | Roll (rad) | Pitch (rad) | Yaw (rad)" << std::endl;
+    // std::cout << "-----+------------+-------------+-----------" << std::endl;
+    // for (int step = 0; step < windowSize; step++) {
+    //     Tensor stepPred = allPredictions.select(1, step);
+    //     Tensor stepTarget = y.select(1, step);
+    //     Tensor mae = (stepPred - stepTarget).abs().mean(0);
+    //     auto acc = mae.accessor<double, 1>();
+    //     std::cout << std::setw(4) << (step + 1) << " | "
+    //               << std::fixed << std::setprecision(6)
+    //               << std::setw(10) << acc[0] << " | "
+    //               << std::setw(11) << acc[1] << " | "
+    //               << std::setw(9) << acc[2] << std::endl;
+    // }
+    // std::cout << std::endl;
 
-        // Calculate RMSE for each angle
-        Tensor diff = stepPred - stepTarget;
-        Tensor squaredDiff = diff.pow(2);
-        Tensor mse = squaredDiff.mean(0);  // Mean over samples, keep 3 angles
-        Tensor rmse = mse.sqrt();
+    // // R² per step
+    // std::cout << "=== R² per step ===" << std::endl;
+    // std::cout << "Step | Roll       | Pitch      | Yaw" << std::endl;
+    // std::cout << "-----+------------+------------+-----------" << std::endl;
+    // for (int step = 0; step < windowSize; step++) {
+    //     Tensor stepPred = allPredictions.select(1, step);
+    //     Tensor stepTarget = y.select(1, step);
+    //     Tensor ss_res = (stepPred - stepTarget).pow(2).sum(0);
+    //     Tensor ss_tot = (stepTarget - stepTarget.mean(0)).pow(2).sum(0);
+    //     Tensor r2 = 1.0 - (ss_res / ss_tot);
+    //     auto acc = r2.accessor<double, 1>();
+    //     std::cout << std::setw(4) << (step + 1) << " | "
+    //               << std::fixed << std::setprecision(6)
+    //               << std::setw(10) << acc[0] << " | "
+    //               << std::setw(10) << acc[1] << " | "
+    //               << std::setw(9) << acc[2] << std::endl;
+    // }
+    // std::cout << std::endl;
 
-        auto rmse_accessor = rmse.accessor<double, 1>();
+    // // TESTING ON FIRST SAMPLE
+    // std::cout << "=== Testing Model on First Sample ===" << std::endl;
 
-        std::cout << std::setw(4) << (step + 1) << " | "
-                  << std::fixed << std::setprecision(6)
-                  << std::setw(10) << rmse_accessor[0] << " | "
-                  << std::setw(11) << rmse_accessor[1] << " | "
-                  << std::setw(9) << rmse_accessor[2] << std::endl;
-    }
+    // // Test on first sample
+    // Tensor testInput = X[0].unsqueeze(0);  // [1, 9]
+    // Tensor testOutput = model->forward(testInput);
+    // Tensor testPrediction = testOutput.view({windowSize, NUM_OUTPUT_FEATURES});
 
-    std::cout << std::endl;
+    // std::cout << "Input (timestep 0):" << std::endl;
+    // std::cout << testInput << std::endl;
+    // std::cout << std::endl;
 
-    // ==========================================
-    // TESTING ON FIRST SAMPLE
-    // ==========================================
-    std::cout << "=== Testing Model on First Sample ===" << std::endl;
+    // std::cout << "Predicted angles for next 10 timesteps:" << std::endl;
+    // std::cout << testPrediction << std::endl;
+    // std::cout << std::endl;
 
-    // Test on first sample
-    Tensor testInput = X[0].unsqueeze(0);  // [1, 9]
-    Tensor testOutput = model->forward(testInput);
-    Tensor testPrediction = testOutput.view({windowSize, NUM_OUTPUT_FEATURES});
-
-    std::cout << "Input (timestep 0):" << std::endl;
-    std::cout << testInput << std::endl;
-    std::cout << std::endl;
-
-    std::cout << "Predicted angles for next 10 timesteps:" << std::endl;
-    std::cout << testPrediction << std::endl;
-    std::cout << std::endl;
-
-    std::cout << "Target (ground truth):" << std::endl;
-    std::cout << y[0] << std::endl;
+    // std::cout << "Target (ground truth):" << std::endl;
+    // std::cout << y[0] << std::endl;
 
     return 0;
 }
