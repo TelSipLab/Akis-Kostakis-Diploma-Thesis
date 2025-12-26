@@ -3,3 +3,5 @@ Python/venv
 *.out
 Results
 Data
+# Saved models
+*.pt
