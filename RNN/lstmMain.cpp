@@ -193,6 +193,13 @@ int main() {
                       << " | Loss: " << std::fixed << std::setprecision(6)
                       << avgLoss << std::endl;
         }
+
+        // Save model every 100 epochs
+        if ((epoch + 1) % 100 == 0 || epoch == numEpochs - 1) {
+            std::string modelPath = "lstm_model_epoch_" + std::to_string(epoch + 1) + ".pt";
+            torch::save(model, modelPath);
+            std::cout << "  --> Saved model: " << modelPath << std::endl;
+        }
     }
 
     std::cout << std::endl;
@@ -213,31 +220,45 @@ int main() {
     Tensor overallRMSE = allDiff.pow(2).mean().sqrt();
     Tensor overallMAE = allDiff.abs().mean();
 
+    // RMSE per angle (across ALL samples and ALL steps) - for EKF comparison
+    std::vector<int64_t> dims = {0, 1};  // Average over samples and steps
+    Tensor rmsePerAngle = allDiff.pow(2).mean(dims).sqrt();
+    auto rmse_acc = rmsePerAngle.accessor<double, 1>();
+
     std::cout << "Overall Metrics:" << std::endl;
-    std::cout << "  RMSE: " << std::fixed << std::setprecision(6)
+    std::cout << "  RMSE (all): " << std::fixed << std::setprecision(6)
               << overallRMSE.item<double>() << " rad = "
               << std::setprecision(3) << overallRMSE.item<double>() * 180.0 / M_PI << " deg" << std::endl;
-    std::cout << "  MAE:  " << std::fixed << std::setprecision(6)
+    std::cout << "  MAE  (all): " << std::fixed << std::setprecision(6)
               << overallMAE.item<double>() << " rad = "
               << std::setprecision(3) << overallMAE.item<double>() * 180.0 / M_PI << " deg" << std::endl;
     std::cout << std::endl;
 
-    // // RMSE per step
-    // std::cout << "=== RMSE per step ===" << std::endl;
-    // std::cout << "Step | Roll (rad) | Pitch (rad) | Yaw (rad)" << std::endl;
-    // std::cout << "-----+------------+-------------+-----------" << std::endl;
-    // for (int step = 0; step < windowSize; step++) {
-    //     Tensor stepPred = allPredictions.select(1, step);
-    //     Tensor stepTarget = y.select(1, step);
-    //     Tensor rmse = (stepPred - stepTarget).pow(2).mean(0).sqrt();
-    //     auto acc = rmse.accessor<double, 1>();
-    //     std::cout << std::setw(4) << (step + 1) << " | "
-    //               << std::fixed << std::setprecision(6)
-    //               << std::setw(10) << acc[0] << " | "
-    //               << std::setw(11) << acc[1] << " | "
-    //               << std::setw(9) << acc[2] << std::endl;
-    // }
-    // std::cout << std::endl;
+    std::cout << "RMSE per angle (all samples, all steps):" << std::endl;
+    std::cout << "  Roll  RMSE: " << std::setprecision(6) << rmse_acc[0] << " rad = "
+              << std::setprecision(3) << rmse_acc[0] * 180.0 / M_PI << " deg " << std::endl;
+    std::cout << "  Pitch RMSE: " << std::setprecision(6) << rmse_acc[1] << " rad = "
+              << std::setprecision(3) << rmse_acc[1] * 180.0 / M_PI << " deg " << std::endl;
+    std::cout << "  Yaw   RMSE: " << std::setprecision(6) << rmse_acc[2] << " rad = "
+              << std::setprecision(3) << rmse_acc[2] * 180.0 / M_PI << " deg" << std::endl;
+    std::cout << std::endl;
+
+    // RMSE per step
+    std::cout << "=== RMSE per step ===" << std::endl;
+    std::cout << "Step | Roll (rad) | Pitch (rad) | Yaw (rad)" << std::endl;
+    std::cout << "-----+------------+-------------+-----------" << std::endl;
+    for (int step = 0; step < windowSize; step++) {
+        Tensor stepPred = allPredictions.select(1, step);
+        Tensor stepTarget = y.select(1, step);
+        Tensor rmse = (stepPred - stepTarget).pow(2).mean(0).sqrt();
+        auto acc = rmse.accessor<double, 1>();
+        std::cout << std::setw(4) << (step + 1) << " | "
+                  << std::fixed << std::setprecision(6)
+                  << std::setw(10) << acc[0] << " | "
+                  << std::setw(11) << acc[1] << " | "
+                  << std::setw(9) << acc[2] << std::endl;
+    }
+    std::cout << std::endl;
 
     // // MAE per step
     // std::cout << "=== MAE per step ===" << std::endl;
