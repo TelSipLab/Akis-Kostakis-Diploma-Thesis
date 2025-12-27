@@ -64,12 +64,14 @@ private:
 };
 
 int main() {
+    const int lookbackWindow = 10;
     const int windowSize = 5;           // Predict next 5 timesteps
     const int NUM_INPUT_FEATURES = 9;   // 9 columns in dataset_1.csv
     const int NUM_OUTPUT_FEATURES = 3;  // Predict 3 angles (roll, pitch, yaw)
 
     std::cout << "=== LSTM Multi-Step Ahead Prediction ===" << std::endl;
     std::cout << "Configuration:" << std::endl;
+    std::cout << "Lookback window (K): " <<  lookbackWindow << " timesteps" << std::endl;
     std::cout << "  Prediction horizon (N): " << windowSize << " timesteps" << std::endl;
     std::cout << "  Input features: " << NUM_INPUT_FEATURES << std::endl;
     std::cout << "  Output features: " << NUM_OUTPUT_FEATURES << std::endl;
@@ -86,7 +88,7 @@ int main() {
     std::cout << "Columns: [roll_gt, pitch_gt, yaw_gt, gyro_r, gyro_p, gyro_y, torque_r, torque_p, torque_y]" << std::endl;
     std::cout << std::endl;
 
-    int trainingSamples = totalSamples - windowSize;  // Remove windowSize from the training sample
+    int trainingSamples = totalSamples - windowSize - lookbackWindow +1;  // Remove windowSize from the training sample
     std::cout << "Number of training samples: " << trainingSamples  << " after removing windowSize" << std::endl;
 
     // Convert dataset to tensor
@@ -95,7 +97,7 @@ int main() {
 
     // Pre-allocate X and y tensors
     auto options = torch::TensorOptions().dtype(torch::kDouble);
-    Tensor X = torch::zeros({trainingSamples, NUM_INPUT_FEATURES}, options);
+    Tensor X = torch::zeros({trainingSamples, lookbackWindow, NUM_INPUT_FEATURES}, options);  // 3D for sequence input
     Tensor y = torch::zeros({trainingSamples, windowSize, NUM_OUTPUT_FEATURES}, options);
 
     // Angles tensor containg the ground truth values
@@ -103,13 +105,12 @@ int main() {
     std::cout << "Angles tensor shape: " << anglesTensor.sizes() << std::endl;
     // Shape: [3397, 3]
 
-    // Create samples (single loop - much cleaner!)
+    // Create sequences
     for (int i = 0; i < trainingSamples; i++) {
-        // Input: all 9 features at timestep i
-        X[i] = datasetTensor[i];
-
-        // Target: next N timesteps, angles only
-        y[i] = anglesTensor.slice(0, i+1, i+windowSize+1);  // Rows [i+1 to i+N]
+        X[i] = datasetTensor.slice(0, i, i + lookbackWindow);
+        
+        int predStart = i + lookbackWindow;
+        y[i] = anglesTensor.slice(0, predStart, predStart + windowSize);
     }
 
     std::cout << std::endl;

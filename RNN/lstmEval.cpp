@@ -44,6 +44,7 @@ int main(int argc, char* argv[]) {
     std::string modelPath = argv[1];
     int sampleIndex = (argc >= 3) ? std::atoi(argv[2]) : 0;
 
+    const int lookbackWindow = 10;  // Must match training!
     const int windowSize = 5;
     const int NUM_INPUT_FEATURES = 9;
     const int NUM_OUTPUT_FEATURES = 3;
@@ -52,6 +53,7 @@ int main(int argc, char* argv[]) {
     std::cout << "=== LSTM Model Evaluation (Single Sample) ===" << std::endl;
     std::cout << "Model: " << modelPath << std::endl;
     std::cout << "Sample index: " << sampleIndex << std::endl;
+    std::cout << "Lookback window: " << lookbackWindow << " timesteps" << std::endl;
     std::cout << std::endl;
 
     // Load model
@@ -71,27 +73,30 @@ int main(int argc, char* argv[]) {
     datasetReader.read();
     Eigen::MatrixXd dataset = datasetReader.getEigenData();
 
-    if (sampleIndex >= dataset.rows() - windowSize) {
-        std::cerr << "Sample index too large! Max: " << dataset.rows() - windowSize - 1 << std::endl;
+    if (sampleIndex >= dataset.rows() - windowSize - lookbackWindow + 1) {
+        std::cerr << "Sample index too large! Max: " << dataset.rows() - windowSize - lookbackWindow << std::endl;
         return 1;
     }
 
     std::cout << std::endl;
 
-    // Prepare single input
+    // Prepare sequence input (lookback window)
     auto options = torch::TensorOptions().dtype(torch::kDouble);
-    Tensor input = torch::zeros({1, NUM_INPUT_FEATURES}, options);
+    Tensor input = torch::zeros({1, lookbackWindow, NUM_INPUT_FEATURES}, options);
 
-    // Fill input with sample data
-    for (int j = 0; j < NUM_INPUT_FEATURES; j++) {
-        input[0][j] = dataset(sampleIndex, j);
+    // Fill input with lookback window data
+    for (int t = 0; t < lookbackWindow; t++) {
+        for (int j = 0; j < NUM_INPUT_FEATURES; j++) {
+            input[0][t][j] = dataset(sampleIndex + t, j);
+        }
     }
 
-    // Ground truth for next 5 timesteps
+    // Ground truth for next 5 timesteps (after lookback window)
     Tensor groundTruth = torch::zeros({windowSize, NUM_OUTPUT_FEATURES}, options);
+    int predStart = sampleIndex + lookbackWindow;
     for (int t = 0; t < windowSize; t++) {
         for (int j = 0; j < NUM_OUTPUT_FEATURES; j++) {
-            groundTruth[t][j] = dataset(sampleIndex + t + 1, j);  // Next 5 timesteps, first 3 columns
+            groundTruth[t][j] = dataset(predStart + t, j);  // Next 5 timesteps after lookback, first 3 columns
         }
     }
 
@@ -103,8 +108,8 @@ int main(int argc, char* argv[]) {
     Tensor prediction = output.view({windowSize, NUM_OUTPUT_FEATURES});  // [5, 3]
 
     // Display results
-    std::cout << "=== Input (timestep " << sampleIndex << ") ===" << std::endl;
-    std::cout << "Shape: [1, 9]" << std::endl;
+    std::cout << "=== Input (timesteps " << sampleIndex << " to " << sampleIndex + lookbackWindow - 1 << ") ===" << std::endl;
+    std::cout << "Shape: [1, " << lookbackWindow << ", " << NUM_INPUT_FEATURES << "]" << std::endl;
     std::cout << input << std::endl;
     std::cout << std::endl;
 

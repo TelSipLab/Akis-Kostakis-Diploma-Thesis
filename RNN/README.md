@@ -10,3 +10,10 @@ Unzip the downloaded zip file into a directory of your choice
 
 ln -s ../Results/ .
 ln -s ../Data .
+
+# Results
+
+Epochs = 300
+Overall Metrics:
+  RMSE: 0.014321 rad = 0.821 deg
+  MAE:  0.010296 rad = 0.590 deg
