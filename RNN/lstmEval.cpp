@@ -1,7 +1,9 @@
+#include "csvreader.hpp"
+
+#include <exception>
 #include <string>
 #include <iostream>
 #include <iomanip>
-#include "csvreader.hpp"
 
 #include <torch/torch.h>
 
@@ -19,9 +21,7 @@ public:
     }
 
     Tensor forward(Tensor X) {
-        if (X.dim() == 2) {
-            X = X.unsqueeze(1);  // [batch, features] → [batch, 1, features]
-        }
+        // Input: [batch, seq_len=10, features=9]
         auto lstmOutput = lstm->forward(X);
         auto out = std::get<0>(lstmOutput);
         out = out.select(1, -1);  // Take last timestep
@@ -50,7 +50,7 @@ int main(int argc, char* argv[]) {
     const int NUM_OUTPUT_FEATURES = 3;
     const int outputSize = windowSize * NUM_OUTPUT_FEATURES;
 
-    std::cout << "=== LSTM Model Evaluation (Single Sample) ===" << std::endl;
+    std::cout << "LSTM Model Evaluation (Single Sample)" << std::endl;
     std::cout << "Model: " << modelPath << std::endl;
     std::cout << "Sample index: " << sampleIndex << std::endl;
     std::cout << "Lookback window: " << lookbackWindow << " timesteps" << std::endl;
@@ -63,7 +63,7 @@ int main(int argc, char* argv[]) {
     try {
         torch::load(model, modelPath);
         std::cout << "Model loaded successfully!" << std::endl;
-    } catch (const c10::Error& e) {
+    } catch (const std::exception &e) {
         std::cerr << "Error loading model: " << e.what() << std::endl;
         return 1;
     }

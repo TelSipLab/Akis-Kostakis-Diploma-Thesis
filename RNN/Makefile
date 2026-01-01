@@ -35,6 +35,6 @@ lstmEval: lstmEval.cpp
 		$(LIBTORCH_LIBS) $(LIBTORCH_RPATH)
 
 clean:
-	rm -f example.out lstmExample.out
+	rm -f *.out *.o
 
 .PHONY: all clean

@@ -3,6 +3,7 @@
 
 #include "pch.h"
 
+#include <cmath>
 #include <fstream>
 #include <numeric>
 
@@ -16,6 +17,11 @@ class Utils {
     // Radians -> Degrees
     static void convertToDeg(Eigen::VectorXd& vector) {
         vector = (vector * 180.0) / M_PI;
+    }
+
+    // Radians -> Degrees
+    static double convertToDeg(const double value) {
+        return (value * 180.0) / M_PI;
     }
 
     static void printVec(const Eigen::VectorXd& vector, int n = 10) {
