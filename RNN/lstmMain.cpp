@@ -70,7 +70,24 @@ private:
     torch::nn::Linear fc{nullptr};
 };
 
-int main() {
+int main(int argc, char* argv[]) {
+    // Parse command-line arguments
+    int numEpochs = 300;  // Default value
+
+    for (int i = 1; i < argc; i++) {
+        std::string arg = argv[i];
+        if ((arg == "-epochs" || arg == "--epochs") && i + 1 < argc) {
+            numEpochs = std::atoi(argv[i + 1]);
+            i++;  // Skip next argument
+        } else if (arg == "-h" || arg == "--help") {
+            std::cout << "Usage: " << argv[0] << " [options]" << std::endl;
+            std::cout << "Options:" << std::endl;
+            std::cout << "  -epochs N, --epochs N   Number of training epochs (default: 300)" << std::endl;
+            std::cout << "  -h, --help              Show this help message" << std::endl;
+            return 0;
+        }
+    }
+
     const int lookbackWindow = 10;
     const int windowSize = 5;           // Predict next 5 timesteps
     const int NUM_INPUT_FEATURES = 9;   // 9 columns in dataset_1.csv
@@ -82,6 +99,7 @@ int main() {
     std::cout << "  Prediction horizon (N): " << windowSize << " timesteps" << std::endl;
     std::cout << "  Input features: " << NUM_INPUT_FEATURES << std::endl;
     std::cout << "  Output features: " << NUM_OUTPUT_FEATURES << std::endl;
+    std::cout << "  Epochs: " << numEpochs << std::endl;
     std::cout << std::endl;
 
     CsvReader datasetReader("Data/dataset_1.csv");
@@ -134,7 +152,6 @@ int main() {
 
     // Training parameters
     const int batchSize = 32;
-    const int numEpochs = 300;
     const double learningRate = 0.001; // Classic value .. TODO Should tune this ? 
 
     auto criterion = torch::nn::MSELoss();
