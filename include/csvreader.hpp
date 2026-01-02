@@ -116,6 +116,43 @@ class CsvReader {
         return eigenData;
     }
 
+    MatrixXd getColumn(int col) {
+        assert(col < cols);
+        return eigenData.col(col);
+    }
+
+    MatrixXd getManyCols(int col1, int col2) {
+        assert(eigenData.cols() < col1);
+        assert(eigenData.cols() < col2);
+
+        auto matrix1 = eigenData.col(col1);
+        auto matrix2 = eigenData.col(col2);
+
+        assert(matrix1.cols() + matrix2.cols() == 2);
+
+        MatrixXd newMatrix(matrix1.rows(), 2);
+        newMatrix << matrix1, matrix2;
+
+        return newMatrix;
+    }
+
+    MatrixXd getManyCols(int col1, int col2, int col3) {
+        assert(eigenData.cols() < col1);
+        assert(eigenData.cols() < col2);
+        assert(eigenData.cols() < col3);
+
+        auto matrix1 = eigenData.col(col1);
+        auto matrix2 = eigenData.col(col2);
+        auto matrix3 = eigenData.col(col3);
+
+        assert(matrix1.cols() + matrix2.cols() + matrix3.cols() == 3);
+
+        MatrixXd newMatrix(matrix1.rows(), 3);
+        newMatrix << matrix1, matrix2, matrix3;
+
+        return newMatrix;
+    }
+
     unsigned long getRows() const {
         return rows;
     }
