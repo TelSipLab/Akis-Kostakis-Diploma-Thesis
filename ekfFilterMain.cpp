@@ -11,18 +11,33 @@ int main() {
     const double dt = 0.02;
     const int DISPLAY_SAMPLES = 10;
 
-    // Load data
-    CsvReader gyroData("Data/gyro.csv");
-    gyroData.read();
-    Eigen::MatrixXd gyroMeasurements = gyroData.getEigenData();
+    Eigen::MatrixXd gyroMeasurements;
+    Eigen::MatrixXd accelMeasurements;
+    Eigen::MatrixXd groundTruthAngles;
 
-    CsvReader accelData("Data/accel.csv");
-    accelData.read();
-    Eigen::MatrixXd accelMeasurements = accelData.getEigenData();
+    bool useNewData = false;
 
-    CsvReader anglesData("Data/angles.csv");
-    anglesData.read();
-    Eigen::MatrixXd groundTruthAngles = anglesData.getEigenData();
+    if(!useNewData) {
+        // Load data
+        CsvReader gyroData("Data/gyro.csv");
+        gyroData.read();
+        gyroMeasurements = gyroData.getEigenData();
+
+        CsvReader accelData("Data/accel.csv");
+        accelData.read();
+        accelMeasurements = accelData.getEigenData();
+
+        CsvReader anglesData("Data/angles.csv");
+        anglesData.read();
+        groundTruthAngles = anglesData.getEigenData();
+    } else {
+        // CsvReader allData("Data/dataset_1.csv");
+
+        // gyroMeasurements = allData.getManyCols(3,4,5);
+        // accelMeasurements = allData.getManyCols();
+        // groundTruthAngles = allData.getManyCols(0, 1);
+    }
+
 
     // Ground truth (convert from radians to degrees)
     Eigen::VectorXd rollGroundTruth = Utils::getVectorFromMatrix(groundTruthAngles, 0);

@@ -40,13 +40,34 @@ All sensor data is located in the `Data/` directory from a 6-DOF IMU sensor.
 
 ### Input Files
 
+#### Classical Filter Dataset (Original)
+
 | File | Description | Format | Units |
 |------|-------------|--------|-------|
 | `gyro.csv` | Angular velocity (3-axis) | 3 columns: X, Y, Z | rad/s |
 | `accel.csv` | Linear acceleration (3-axis) | 3 columns: X, Y, Z | m/s² |
 | `angles.csv` | Ground truth angles | Column 1: Roll, Column 2: Pitch | radians |
 
-**Note**: Movement profile during data collection: (??) | Ground truth captured using: (??) 
+**Note**: Movement profile during data collection: (??) | Ground truth captured using: (??)
+
+#### LSTM Training Dataset (dataset_1.csv)
+
+**Format:** 3397 samples × 9 columns
+**Sampling Rate:** Ts = 0.03 sec (33.3 Hz)
+
+| Column | Description | Units |
+|--------|-------------|-------|
+| 0 | Ground truth Roll angle | radians |
+| 1 | Ground truth Pitch angle | radians |
+| 2 | Ground truth Yaw angle | radians |
+| 3 | Gyroscope ω_roll (rotation rate around roll axis) | rad/s |
+| 4 | Gyroscope ω_pitch (rotation rate around pitch axis) | rad/s |
+| 5 | Gyroscope ω_yaw (rotation rate around yaw axis) | rad/s |
+| 6 | Control torque τ_roll (from PID controller) | N·m |
+| 7 | Control torque τ_pitch (from PID controller) | N·m |
+| 8 | Control torque τ_yaw (from PID controller) | N·m |
+
+**Usage:** Multi-step ahead prediction with LSTM (see `RNN/` directory) 
 
 ## Build & Run
 
