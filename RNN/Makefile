@@ -6,7 +6,7 @@ LIBTORCH_INCLUDE = -I$(LIBTORCH_PATH)/include -I$(LIBTORCH_PATH)/include/torch/c
 LIBTORCH_LIBS = -L$(LIBTORCH_PATH)/lib -ltorch -ltorch_cpu -lc10
 LIBTORCH_RPATH = -Wl,-rpath,$(LIBTORCH_PATH)/lib
 
-CSVLIBRARY_INCLUDE = -I../include
+CSVLIBRARY_INCLUDE = -Iinclude/
 
 # Compiler flags
 CXX = g++
