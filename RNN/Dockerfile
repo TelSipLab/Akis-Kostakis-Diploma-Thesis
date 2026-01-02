@@ -29,23 +29,18 @@ ENV LD_LIBRARY_PATH=/opt/libtorch/lib:$LD_LIBRARY_PATH
 # Create app directory (WORKDIR creates it if it doesn't exist)
 WORKDIR /app
 
-# Copy files in order of change frequency (least to most)
-# 1. Data (never changes) - copied first for better caching
 COPY Data/ ./Data/
-
-# 2. Headers (change occasionally)
 COPY include/ ./include/
+COPY RNN/Makefile Makefile
 
-# 3. Makefile (changes occasionally)
-COPY RNN/Makefile ./RNN/Makefile
-RUN sed -i 's|LIBTORCH_PATH = .*|LIBTORCH_PATH = /opt/libtorch|g' RNN/Makefile
+RUN sed -i 's|LIBTORCH_PATH = .*|LIBTORCH_PATH = /opt/libtorch|g' Makefile
 
 # 4. Source files (change frequently) - copied last
-COPY RNN/*.cpp ./RNN/
+COPY RNN/*.cpp ./
 
 # Compile the LSTM application
-WORKDIR /app/RNN
-RUN make lstm
+WORKDIR /app
+RUN make lstm -j
 
 # Default command: run the trained model
 CMD ["./lstm.out", "--epochs", "10"]
