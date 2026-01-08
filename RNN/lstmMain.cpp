@@ -10,15 +10,42 @@
 
 using torch::Tensor;
 
-template <
-    class result_t   = std::chrono::milliseconds,
-    class clock_t    = std::chrono::steady_clock,
-    class duration_t = std::chrono::milliseconds
->
-auto since(std::chrono::time_point<clock_t, duration_t> const& start) {
-    return std::chrono::duration_cast<result_t>(clock_t::now() - start);
-}
+// Print evaluation metrics in a formatted way
+void printMetrics(double rmseValue, double maeValue,
+                  const std::vector<double>& rmsePerAngle,
+                  const std::vector<std::vector<double>>& rmsePerStep,
+                  int windowSize) {
+    std::cout << "Overall Metrics:" << std::endl;
+    std::cout << "  RMSE (all): " << std::fixed << std::setprecision(6)
+              << rmseValue << " rad = "
+              << std::setprecision(3) << Utils::convertToDeg(rmseValue) << " deg" << std::endl;
+    std::cout << "  MAE  (all): " << std::fixed << std::setprecision(6)
+              << maeValue << " rad = "
+              << std::setprecision(3) << Utils::convertToDeg(maeValue) << " deg" << std::endl;
+    std::cout << std::endl;
 
+    std::cout << "RMSE per angle (all samples, all steps):" << std::endl;
+    std::cout << "  Roll  RMSE: " << std::setprecision(6) << rmsePerAngle[0] << " rad = "
+              << std::setprecision(3) << Utils::convertToDeg(rmsePerAngle[0])<< " deg " << std::endl;
+    std::cout << "  Pitch RMSE: " << std::setprecision(6) << rmsePerAngle[1] << " rad = "
+              << std::setprecision(3) << Utils::convertToDeg(rmsePerAngle[1]) << " deg " << std::endl;
+    std::cout << "  Yaw   RMSE: " << std::setprecision(6) << rmsePerAngle[2] << " rad = "
+              << std::setprecision(3) << Utils::convertToDeg(rmsePerAngle[2]) << " deg" << std::endl;
+    std::cout << std::endl;
+
+    // RMSE per step
+    std::cout << "RMSE per step" << std::endl;
+    std::cout << "Step | Roll (deg) | Pitch (deg) | Yaw (deg)" << std::endl;
+    std::cout << "-----+------------+-------------+-----------" << std::endl;
+    for (int step = 0; step < windowSize; step++) {
+        std::cout << std::setw(4) << (step + 1) << " | "
+                  << std::fixed << std::setprecision(6)
+                  << std::setw(10) << Utils::convertToDeg(rmsePerStep[step][0]) << " | "
+                  << std::setw(11) << Utils::convertToDeg(rmsePerStep[step][1]) << " | "
+                  << std::setw(9) << Utils::convertToDeg(rmsePerStep[step][2]) << std::endl;
+    }
+    std::cout << std::endl;
+}
 
 // TODO Move out of here if network get's too complex
 class LSTMNetwork: public torch::nn::Module {
@@ -61,7 +88,7 @@ public:
             }
 
             auto rowTensor = torch::from_blob(rowData.data(), {cols}, options).clone();
-            tensor[i] = rowTensor;  // Direct indexing - much cleaner!
+            tensor[i] = rowTensor;
         }
         return tensor;
     }
@@ -89,7 +116,7 @@ int main(int argc, char* argv[]) {
     }
 
     const int lookbackWindow = 10;
-    const int windowSize = 5;           // Predict next 5 timesteps
+    const int windowSize = 10;           // Predict next 10 timesteps
     const int NUM_INPUT_FEATURES = 9;   // 9 columns in dataset_1.csv
     const int NUM_OUTPUT_FEATURES = 3;  // Predict 3 angles (roll, pitch, yaw)
 
@@ -125,7 +152,7 @@ int main(int argc, char* argv[]) {
     // Angles tensor containg the ground truth values
     Tensor anglesTensor = datasetTensor.slice(1, 0, NUM_OUTPUT_FEATURES);
     std::cout << "Angles tensor shape: " << anglesTensor.sizes() << std::endl;
-    // Shape: [3397, 3]
+    // [3397, 3]
 
     // Create sequences
     for (int i = 0; i < trainingSamples; i++) {
@@ -152,7 +179,7 @@ int main(int argc, char* argv[]) {
 
     // Training parameters
     const int batchSize = 32;
-    const double learningRate = 0.001; // Classic value .. TODO Should tune this ? 
+    const double learningRate = 0.001; // Classic value .. TODO Should we tune this ? 
 
     auto criterion = torch::nn::MSELoss();
     auto optimizer = torch::optim::Adam(model->parameters(), learningRate);
@@ -162,7 +189,7 @@ int main(int argc, char* argv[]) {
     std::cout << "Epochs: " << numEpochs << std::endl;
     std::cout << "Learning rate: " << learningRate << std::endl;
     std::cout << "Optimizer: Adam" << std::endl;
-    std::cout << "Loss function: MSE" << std::endl;
+    std::cout << "Loss function: " << criterion->name() << std::endl;
     std::cout << std::endl;
 
     std::cout << "Starting Training" << std::endl;
@@ -197,8 +224,8 @@ int main(int argc, char* argv[]) {
             numBatches++;
         }
 
-        // Print progress every 10 epochs
-        if (epoch % 10 == 0 || epoch == numEpochs - 1) {
+        // Print progress
+        if (epoch % 5 == 0 || epoch == numEpochs - 1) {
             double avgLoss = epochLoss / numBatches;
             std::cout << "Epoch " << std::setw(3) << epoch
                       << " | Loss: " << std::fixed << std::setprecision(6)
@@ -215,8 +242,7 @@ int main(int argc, char* argv[]) {
 
     std::cout << std::endl;
     std::cout << "Training Complete" << std::endl;
-    std::cout << "Elapsed(s) = " << since<std::chrono::seconds>(start).count();
-    std::cout << std::endl;
+    std::cout << "Elapsed(s) = " << since<std::chrono::seconds>(start).count() << std::endl;
 
     // EVALUATION - RMSE PER STEP
     std::cout << "Evaluating RMSE for each prediction step" << std::endl;
@@ -239,46 +265,25 @@ int main(int argc, char* argv[]) {
 
     // RMSE per angle (across ALL samples and ALL steps) - for EKF comparison
     std::vector<int64_t> dims = {0, 1};  // Average over samples and steps
-    Tensor rmsePerAngle = allDiff.pow(2).mean(dims).sqrt();
-    auto rmse_acc = rmsePerAngle.accessor<double, 1>();
+    Tensor rmsePerAngleTensor = allDiff.pow(2).mean(dims).sqrt();
+    auto rmse_acc = rmsePerAngleTensor.accessor<double, 1>();
 
-    std::cout << "Overall Metrics:" << std::endl;
-    std::cout << "  RMSE (all): " << std::fixed << std::setprecision(6)
-              << rmseValue << " rad = "
-              << std::setprecision(3) << Utils::convertToDeg(rmseValue) << " deg" << std::endl;
-    std::cout << "  MAE  (all): " << std::fixed << std::setprecision(6)
-              << maeValue << " rad = "
-              << std::setprecision(3) << Utils::convertToDeg(maeValue) << " deg" << std::endl;
-    std::cout << std::endl;
+    // Extract RMSE per angle into vector
+    std::vector<double> rmsePerAngle = {rmse_acc[0], rmse_acc[1], rmse_acc[2]};
 
-    std::cout << "RMSE per angle (all samples, all steps):" << std::endl;
-    std::cout << "  Roll  RMSE: " << std::setprecision(6) << rmse_acc[0] << " rad = "
-              << std::setprecision(3) << Utils::convertToDeg(rmse_acc[0])<< " deg " << std::endl;
-    std::cout << "  Pitch RMSE: " << std::setprecision(6) << rmse_acc[1] << " rad = "
-              << std::setprecision(3) << Utils::convertToDeg(rmse_acc[1]) << " deg " << std::endl;
-    std::cout << "  Yaw   RMSE: " << std::setprecision(6) << rmse_acc[2] << " rad = "
-              << std::setprecision(3) << Utils::convertToDeg(rmse_acc[2]) << " deg" << std::endl;
-    std::cout << std::endl;
-
-    // RMSE per step
-    std::cout << "RMSE per step" << std::endl;
-    std::cout << "Step | Roll (deg) | Pitch (deg) | Yaw (deg)" << std::endl;
-    std::cout << "-----+------------+-------------+-----------" << std::endl;
+    // Calculate RMSE per step
+    std::vector<std::vector<double>> rmsePerStep;
     for (int step = 0; step < windowSize; step++) {
         Tensor stepPred = allPredictions.select(1, step);
         Tensor stepTarget = y.select(1, step);
         Tensor rmse = (stepPred - stepTarget).pow(2).mean(0).sqrt();
-        
-        auto acc = rmse.accessor<double, 1>();
-        // acc = [roll_rmse, pitch_rmse, yaw_rmse]
 
-        std::cout << std::setw(4) << (step + 1) << " | "
-                  << std::fixed << std::setprecision(6)
-                  << std::setw(10) << Utils::convertToDeg(acc[0]) << " | "
-                  << std::setw(11) << Utils::convertToDeg(acc[1]) << " | "
-                  << std::setw(9) << Utils::convertToDeg(acc[2]) << std::endl;
+        auto acc = rmse.accessor<double, 1>();
+        rmsePerStep.push_back({acc[0], acc[1], acc[2]});
     }
-    std::cout << std::endl;
+
+    // Print all metrics
+    printMetrics(rmseValue, maeValue, rmsePerAngle, rmsePerStep, windowSize);
     
     return 0;
 }
