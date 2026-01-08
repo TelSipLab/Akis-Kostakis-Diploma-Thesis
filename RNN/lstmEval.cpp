@@ -116,7 +116,7 @@ int main(int argc, char* argv[]) {
         }
 
         // Write header
-        outFile << "timestep,roll_pred,pitch_pred,yaw_pred,roll_gt,pitch_gt,yaw_gt" << std::endl;
+        outFile << "timestep,step_ahead,roll_pred,pitch_pred,yaw_pred,roll_gt,pitch_gt,yaw_gt" << std::endl;
 
         // Process all samples
         for (int sample = 0; sample < trainingSamples; sample++) {
@@ -138,7 +138,8 @@ int main(int argc, char* argv[]) {
             // Write predictions for each of the 5 timesteps
             for (int step = 0; step < windowSize; step++) {
                 int absoluteTimestep = predStart + step;
-
+                int stepAhead = step + 1;
+                
                 // Get predicted angles
                 auto pred = prediction[step];
                 double roll_pred = pred[0].item<double>();
@@ -151,7 +152,7 @@ int main(int argc, char* argv[]) {
                 double yaw_gt = dataset(absoluteTimestep, 2);
 
                 // Write to CSV
-                outFile << absoluteTimestep << ","
+                outFile << absoluteTimestep << "," << stepAhead << ","
                        << roll_pred << "," << pitch_pred << "," << yaw_pred << ","
                        << roll_gt << "," << pitch_gt << "," << yaw_gt << std::endl;
             }
