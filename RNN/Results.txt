@@ -1,3 +1,283 @@
+# Predict 10 timestamps - 1K Epochs ....
+
+kostakis@DESKTOP-HM9Q2U8:~/dev/Akis-Kostakis-Diploma-Thesis/RNN$ ./lstm.out -epochs 1000
+
+LSTM Multi-Step Ahead Prediction
+Configuration:
+Lookback window (K): 10 timesteps
+  Prediction horizon (N): 10 timesteps
+  Input features: 9
+  Output features: 3
+  Epochs: 1000
+
+Data/dataset_1.csv rows: 3397 Cols: 9 (3397x9)
+Number of training samples: 3378 after removing windowSize and loopback
+Converted eigen matrix to Tensor
+Tensor shape: [3397, 9]
+Angles tensor shape: [3397, 3]
+
+Data Shapes
+X (inputs):  [3378, 10, 9]
+y (targets): [3378, 10, 3]
+
+Model Created
+Architecture: Input(9) -> LSTM(128) -> FC(30)
+
+Training Configuration
+Batch size: 32
+Epochs: 1000
+Learning rate: 0.001
+Optimizer: Adam
+Loss function: torch::nn::MSELossImpl
+
+Starting Training
+Epoch   0 | Loss: 0.010712
+Epoch   5 | Loss: 0.002320
+Epoch  10 | Loss: 0.001236
+Epoch  15 | Loss: 0.000982
+Epoch  20 | Loss: 0.000813
+Epoch  25 | Loss: 0.000737
+Epoch  30 | Loss: 0.000647
+Epoch  35 | Loss: 0.000551
+Epoch  40 | Loss: 0.000494
+Epoch  45 | Loss: 0.000439
+Epoch  50 | Loss: 0.000387
+Epoch  55 | Loss: 0.000354
+Epoch  60 | Loss: 0.000349
+Epoch  65 | Loss: 0.000321
+Epoch  70 | Loss: 0.000281
+Epoch  75 | Loss: 0.000317
+Epoch  80 | Loss: 0.000271
+Epoch  85 | Loss: 0.000265
+Epoch  90 | Loss: 0.000251
+Epoch  95 | Loss: 0.000284
+  -- Saved model: lstm_model_epoch_100.pt
+Epoch 100 | Loss: 0.000214
+Epoch 105 | Loss: 0.000301
+Epoch 110 | Loss: 0.000212
+Epoch 115 | Loss: 0.000230
+Epoch 120 | Loss: 0.000201
+Epoch 125 | Loss: 0.000234
+Epoch 130 | Loss: 0.000220
+Epoch 135 | Loss: 0.000203
+Epoch 140 | Loss: 0.000215
+Epoch 145 | Loss: 0.000190
+Epoch 150 | Loss: 0.000218
+Epoch 155 | Loss: 0.000223
+Epoch 160 | Loss: 0.000203
+Epoch 165 | Loss: 0.000194
+Epoch 170 | Loss: 0.000230
+Epoch 175 | Loss: 0.000201
+Epoch 180 | Loss: 0.000218
+Epoch 185 | Loss: 0.000255
+Epoch 190 | Loss: 0.000261
+Epoch 195 | Loss: 0.000228
+  -- Saved model: lstm_model_epoch_200.pt
+Epoch 200 | Loss: 0.000210
+Epoch 205 | Loss: 0.000200
+Epoch 210 | Loss: 0.000186
+Epoch 215 | Loss: 0.000186
+Epoch 220 | Loss: 0.000198
+Epoch 225 | Loss: 0.000183
+Epoch 230 | Loss: 0.000165
+Epoch 235 | Loss: 0.000191
+Epoch 240 | Loss: 0.000159
+Epoch 245 | Loss: 0.000161
+Epoch 250 | Loss: 0.000187
+Epoch 255 | Loss: 0.000163
+Epoch 260 | Loss: 0.000154
+Epoch 265 | Loss: 0.000145
+Epoch 270 | Loss: 0.000186
+Epoch 275 | Loss: 0.000140
+Epoch 280 | Loss: 0.000144
+Epoch 285 | Loss: 0.000166
+Epoch 290 | Loss: 0.000136
+Epoch 295 | Loss: 0.000149
+  -- Saved model: lstm_model_epoch_300.pt
+Epoch 300 | Loss: 0.000133
+Epoch 305 | Loss: 0.000142
+Epoch 310 | Loss: 0.000130
+Epoch 315 | Loss: 0.000134
+Epoch 320 | Loss: 0.000129
+Epoch 325 | Loss: 0.000128
+Epoch 330 | Loss: 0.000146
+Epoch 335 | Loss: 0.000114
+Epoch 340 | Loss: 0.000128
+Epoch 345 | Loss: 0.000105
+Epoch 350 | Loss: 0.000120
+Epoch 355 | Loss: 0.000125
+Epoch 360 | Loss: 0.000141
+Epoch 365 | Loss: 0.000115
+Epoch 370 | Loss: 0.000102
+Epoch 375 | Loss: 0.000112
+Epoch 380 | Loss: 0.000095
+Epoch 385 | Loss: 0.000111
+Epoch 390 | Loss: 0.000102
+Epoch 395 | Loss: 0.000104
+  -- Saved model: lstm_model_epoch_400.pt
+Epoch 400 | Loss: 0.000101
+Epoch 405 | Loss: 0.000113
+Epoch 410 | Loss: 0.000097
+Epoch 415 | Loss: 0.000123
+Epoch 420 | Loss: 0.000090
+Epoch 425 | Loss: 0.000101
+Epoch 430 | Loss: 0.000108
+Epoch 435 | Loss: 0.000107
+Epoch 440 | Loss: 0.000100
+Epoch 445 | Loss: 0.000093
+Epoch 450 | Loss: 0.000100
+Epoch 455 | Loss: 0.000090
+Epoch 460 | Loss: 0.000084
+Epoch 465 | Loss: 0.000094
+Epoch 470 | Loss: 0.000102
+Epoch 475 | Loss: 0.000090
+Epoch 480 | Loss: 0.000091
+Epoch 485 | Loss: 0.000104
+Epoch 490 | Loss: 0.000082
+Epoch 495 | Loss: 0.000121
+  -- Saved model: lstm_model_epoch_500.pt
+Epoch 500 | Loss: 0.000096
+Epoch 505 | Loss: 0.000077
+Epoch 510 | Loss: 0.000088
+Epoch 515 | Loss: 0.000105
+Epoch 520 | Loss: 0.000078
+Epoch 525 | Loss: 0.000094
+Epoch 530 | Loss: 0.000108
+Epoch 535 | Loss: 0.000091
+Epoch 540 | Loss: 0.000104
+Epoch 545 | Loss: 0.000078
+Epoch 550 | Loss: 0.000076
+Epoch 555 | Loss: 0.000095
+Epoch 560 | Loss: 0.000115
+Epoch 565 | Loss: 0.000094
+Epoch 570 | Loss: 0.000064
+Epoch 575 | Loss: 0.000073
+Epoch 580 | Loss: 0.000112
+Epoch 585 | Loss: 0.000073
+Epoch 590 | Loss: 0.000065
+Epoch 595 | Loss: 0.000078
+  -- Saved model: lstm_model_epoch_600.pt
+Epoch 600 | Loss: 0.000084
+Epoch 605 | Loss: 0.000065
+Epoch 610 | Loss: 0.000064
+Epoch 615 | Loss: 0.000081
+Epoch 620 | Loss: 0.000085
+Epoch 625 | Loss: 0.000059
+Epoch 630 | Loss: 0.000052
+Epoch 635 | Loss: 0.000075
+Epoch 640 | Loss: 0.000090
+Epoch 645 | Loss: 0.000060
+Epoch 650 | Loss: 0.000055
+Epoch 655 | Loss: 0.000061
+Epoch 660 | Loss: 0.000052
+Epoch 665 | Loss: 0.000067
+Epoch 670 | Loss: 0.000072
+Epoch 675 | Loss: 0.000059
+Epoch 680 | Loss: 0.000059
+Epoch 685 | Loss: 0.000074
+Epoch 690 | Loss: 0.000078
+Epoch 695 | Loss: 0.000047
+  -- Saved model: lstm_model_epoch_700.pt
+Epoch 700 | Loss: 0.000072
+Epoch 705 | Loss: 0.000050
+Epoch 710 | Loss: 0.000065
+Epoch 715 | Loss: 0.000063
+Epoch 720 | Loss: 0.000075
+Epoch 725 | Loss: 0.000047
+Epoch 730 | Loss: 0.000066
+Epoch 735 | Loss: 0.000047
+Epoch 740 | Loss: 0.000068
+Epoch 745 | Loss: 0.000072
+Epoch 750 | Loss: 0.000050
+Epoch 755 | Loss: 0.000058
+Epoch 760 | Loss: 0.000077
+Epoch 765 | Loss: 0.000050
+Epoch 770 | Loss: 0.000043
+Epoch 775 | Loss: 0.000079
+Epoch 780 | Loss: 0.000045
+Epoch 785 | Loss: 0.000043
+Epoch 790 | Loss: 0.000057
+Epoch 795 | Loss: 0.000061
+  -- Saved model: lstm_model_epoch_800.pt
+Epoch 800 | Loss: 0.000052
+Epoch 805 | Loss: 0.000054
+Epoch 810 | Loss: 0.000051
+Epoch 815 | Loss: 0.000067
+Epoch 820 | Loss: 0.000054
+Epoch 825 | Loss: 0.000050
+Epoch 830 | Loss: 0.000042
+Epoch 835 | Loss: 0.000056
+Epoch 840 | Loss: 0.000057
+Epoch 845 | Loss: 0.000064
+Epoch 850 | Loss: 0.000057
+Epoch 855 | Loss: 0.000047
+Epoch 860 | Loss: 0.000048
+Epoch 865 | Loss: 0.000066
+Epoch 870 | Loss: 0.000043
+Epoch 875 | Loss: 0.000046
+Epoch 880 | Loss: 0.000054
+Epoch 885 | Loss: 0.000047
+Epoch 890 | Loss: 0.000060
+Epoch 895 | Loss: 0.000039
+  -- Saved model: lstm_model_epoch_900.pt
+Epoch 900 | Loss: 0.000050
+Epoch 905 | Loss: 0.000044
+Epoch 910 | Loss: 0.000049
+Epoch 915 | Loss: 0.000035
+Epoch 920 | Loss: 0.000065
+Epoch 925 | Loss: 0.000039
+Epoch 930 | Loss: 0.000041
+Epoch 935 | Loss: 0.000062
+Epoch 940 | Loss: 0.000048
+Epoch 945 | Loss: 0.000043
+Epoch 950 | Loss: 0.000040
+Epoch 955 | Loss: 0.000045
+Epoch 960 | Loss: 0.000055
+Epoch 965 | Loss: 0.000044
+Epoch 970 | Loss: 0.000054
+Epoch 975 | Loss: 0.000040
+Epoch 980 | Loss: 0.000051
+Epoch 985 | Loss: 0.000045
+Epoch 990 | Loss: 0.000051
+Epoch 995 | Loss: 0.000043
+Epoch 999 | Loss: 0.000044
+  -- Saved model: lstm_model_epoch_1000.pt
+
+Training Complete
+Elapsed(s) = 645
+Evaluating RMSE for each prediction step
+Calculated all predictions size: [3378, 10, 3]
+Overall Metrics:
+  RMSE (all): 0.009754 rad = 0.559 deg
+  MAE  (all): 0.007530 rad = 0.431 deg
+
+RMSE per angle (all samples, all steps):
+  Roll  RMSE: 0.012388 rad = 0.710 deg
+  Pitch RMSE: 0.008085 rad = 0.463 deg
+  Yaw   RMSE: 0.008160 rad = 0.468 deg
+
+RMSE per step
+Step | Roll (deg) | Pitch (deg) | Yaw (deg)
+-----+------------+-------------+-----------
+   1 |   0.671863 |    0.459779 |  0.363131
+   2 |   0.634301 |    0.456966 |  0.375590
+   3 |   0.632788 |    0.463662 |  0.430406
+   4 |   0.649315 |    0.463163 |  0.502269
+   5 |   0.676527 |    0.461990 |  0.528476
+   6 |   0.706551 |    0.465251 |  0.525204
+   7 |   0.737593 |    0.466595 |  0.501144
+   8 |   0.763322 |    0.465659 |  0.464131
+   9 |   0.784007 |    0.459088 |  0.460448
+  10 |   0.814594 |    0.470284 |  0.491514
+
+
+-----------------------------------------------------------------------
+
+
+
+
+
+
 # Results
 
 Epochs = 300
