@@ -4,6 +4,7 @@
 #include <string>
 #include <iostream>
 #include <iomanip>
+#include <fstream>
 
 #include <torch/torch.h>
 
@@ -36,23 +37,44 @@ private:
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
-        std::cout << "Usage: ./lstmEval.out <model_path> [sample_index]" << std::endl;
-        std::cout << "Example: ./lstmEval.out lstm_model_epoch_300.pt 0" << std::endl;
+        std::cout << "Usage: ./lstmEval.out <model_path> [options]" << std::endl;
+        std::cout << "Options:" << std::endl;
+        std::cout << "  [sample_index]       Evaluate single sample (e.g., 0, 1000)" << std::endl;
+        std::cout << "  --save-all, -a       Generate predictions for ALL samples and save to CSV" << std::endl;
+        std::cout << std::endl;
+        std::cout << "Examples:" << std::endl;
+        std::cout << "  ./lstmEval.out lstm_model_epoch_300.pt 0" << std::endl;
+        std::cout << "  ./lstmEval.out lstm_model_epoch_300.pt --save-all" << std::endl;
         return 1;
     }
 
     std::string modelPath = argv[1];
-    int sampleIndex = (argc >= 3) ? std::atoi(argv[2]) : 0;
+    bool saveAll = false;
+    int sampleIndex = 0;
+
+    // Parse arguments
+    if (argc >= 3) {
+        std::string arg = argv[2];
+        if (arg == "--save-all" || arg == "-a") {
+            saveAll = true;
+        } else {
+            sampleIndex = std::atoi(argv[2]);
+        }
+    }
 
     const int lookbackWindow = 10;  // Must match training!
-    const int windowSize = 5;
+    const int windowSize = 10;
     const int NUM_INPUT_FEATURES = 9;
     const int NUM_OUTPUT_FEATURES = 3;
     const int outputSize = windowSize * NUM_OUTPUT_FEATURES;
 
-    std::cout << "LSTM Model Evaluation (Single Sample)" << std::endl;
+    std::cout << "LSTM Model Evaluation" << std::endl;
     std::cout << "Model: " << modelPath << std::endl;
-    std::cout << "Sample index: " << sampleIndex << std::endl;
+    if (saveAll) {
+        std::cout << "Mode: Generate predictions for ALL samples" << std::endl;
+    } else {
+        std::cout << "Mode: Single sample evaluation (index: " << sampleIndex << ")" << std::endl;
+    }
     std::cout << "Lookback window: " << lookbackWindow << " timesteps" << std::endl;
     std::cout << std::endl;
 
@@ -68,17 +90,89 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // Load CSV to get the sample
+    // Load CSV
     CsvReader datasetReader("Data/dataset_1.csv");
     datasetReader.read();
     Eigen::MatrixXd dataset = datasetReader.getEigenData();
 
-    if (sampleIndex >= dataset.rows() - windowSize - lookbackWindow + 1) {
-        std::cerr << "Sample index too large! Max: " << dataset.rows() - windowSize - lookbackWindow << std::endl;
-        return 1;
-    }
+    int totalSamples = dataset.rows();
+    int trainingSamples = totalSamples - windowSize - lookbackWindow + 1;
 
     std::cout << std::endl;
+
+    // Handle --save-all mode
+    if (saveAll) {
+        std::cout << "Generating predictions for " << trainingSamples << " samples..." << std::endl;
+
+        model->eval();
+        torch::NoGradGuard no_grad;
+        auto options = torch::TensorOptions().dtype(torch::kDouble);
+
+        // Open output file
+        std::ofstream outFile("Results/lstm_predictions.csv");
+        if (!outFile.is_open()) {
+            std::cerr << "Error: Could not open Results/lstm_predictions.csv for writing" << std::endl;
+            return 1;
+        }
+
+        // Write header
+        outFile << "timestep,roll_pred,pitch_pred,yaw_pred,roll_gt,pitch_gt,yaw_gt" << std::endl;
+
+        // Process all samples
+        for (int sample = 0; sample < trainingSamples; sample++) {
+            // Prepare input
+            Tensor input = torch::zeros({1, lookbackWindow, NUM_INPUT_FEATURES}, options);
+            for (int t = 0; t < lookbackWindow; t++) {
+                for (int j = 0; j < NUM_INPUT_FEATURES; j++) {
+                    input[0][t][j] = dataset(sample + t, j);
+                }
+            }
+
+            // Get prediction
+            Tensor output = model->forward(input);
+            Tensor prediction = output.view({windowSize, NUM_OUTPUT_FEATURES});
+
+            // Get ground truth
+            int predStart = sample + lookbackWindow;
+
+            // Write predictions for each of the 5 timesteps
+            for (int step = 0; step < windowSize; step++) {
+                int absoluteTimestep = predStart + step;
+
+                // Get predicted angles
+                auto pred = prediction[step];
+                double roll_pred = pred[0].item<double>();
+                double pitch_pred = pred[1].item<double>();
+                double yaw_pred = pred[2].item<double>();
+
+                // Get ground truth angles
+                double roll_gt = dataset(absoluteTimestep, 0);
+                double pitch_gt = dataset(absoluteTimestep, 1);
+                double yaw_gt = dataset(absoluteTimestep, 2);
+
+                // Write to CSV
+                outFile << absoluteTimestep << ","
+                       << roll_pred << "," << pitch_pred << "," << yaw_pred << ","
+                       << roll_gt << "," << pitch_gt << "," << yaw_gt << std::endl;
+            }
+
+            // Progress indicator
+            if (sample % 500 == 0) {
+                std::cout << "  Processed " << sample << "/" << trainingSamples << " samples" << std::endl;
+            }
+        }
+
+        outFile.close();
+        std::cout << "Done! Saved predictions to Results/lstm_predictions.csv" << std::endl;
+        std::cout << "Total prediction rows: " << trainingSamples * windowSize << std::endl;
+        return 0;
+    }
+
+    // Single sample evaluation mode
+    if (sampleIndex >= trainingSamples) {
+        std::cerr << "Sample index too large! Max: " << trainingSamples - 1 << std::endl;
+        return 1;
+    }
 
     // Prepare sequence input (lookback window)
     auto options = torch::TensorOptions().dtype(torch::kDouble);
