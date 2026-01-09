@@ -77,60 +77,66 @@ step5  = df_filtered[df_filtered["step_ahead"] == 5]
 step10 = df_filtered[df_filtered["step_ahead"] == 10]
 
 # =======================
-# Plot helper function
+# Create combined plot with all 3 angles
 # =======================
-def plot_angle(gt, s1, s5, s10, angle_name, ylabel, filename):
-    fig, ax = plt.subplots(figsize=(16, 7))
+fig, axes = plt.subplots(3, 1, figsize=(16, 14))
 
-    ax.plot(gt["timestep"], gt[f"{angle_name}_gt_deg"],
-            label="Ground Truth", color="blue", linewidth=2.5)
+# Roll subplot
+ax = axes[0]
+ax.plot(gt_data["timestep"], gt_data["roll_gt_deg"],
+        label="Ground Truth", color="blue", linewidth=2.5)
+ax.plot(step1["timestep"], step1["roll_pred_deg"],
+        "--", label="1-step ahead", alpha=0.7)
+ax.plot(step5["timestep"], step5["roll_pred_deg"],
+        "--", label="5-step ahead", alpha=0.6)
+ax.plot(step10["timestep"], step10["roll_pred_deg"],
+        "--", label="10-step ahead", alpha=0.5)
+ax.set_ylabel("Roll Angle (degrees)", fontsize=12)
+ax.set_title(f"Roll Angle: Multi-Step Predictions ({start_timestep}–{end_timestep})",
+             fontweight="bold", fontsize=13)
+ax.legend(loc='best')
+ax.grid(True, alpha=0.3)
 
-    ax.plot(s1["timestep"], s1[f"{angle_name}_pred_deg"],
-            "--", label="1-step ahead", alpha=0.7)
+# Pitch subplot
+ax = axes[1]
+ax.plot(gt_data["timestep"], gt_data["pitch_gt_deg"],
+        label="Ground Truth", color="blue", linewidth=2.5)
+ax.plot(step1["timestep"], step1["pitch_pred_deg"],
+        "--", label="1-step ahead", alpha=0.7)
+ax.plot(step5["timestep"], step5["pitch_pred_deg"],
+        "--", label="5-step ahead", alpha=0.6)
+ax.plot(step10["timestep"], step10["pitch_pred_deg"],
+        "--", label="10-step ahead", alpha=0.5)
+ax.set_ylabel("Pitch Angle (degrees)", fontsize=12)
+ax.set_title(f"Pitch Angle: Multi-Step Predictions ({start_timestep}–{end_timestep})",
+             fontweight="bold", fontsize=13)
+ax.legend(loc='best')
+ax.grid(True, alpha=0.3)
 
-    ax.plot(s5["timestep"], s5[f"{angle_name}_pred_deg"],
-            "--", label="5-step ahead", alpha=0.6)
+# Yaw subplot
+ax = axes[2]
+ax.plot(gt_data["timestep"], gt_data["yaw_gt_deg"],
+        label="Ground Truth", color="blue", linewidth=2.5)
+ax.plot(step1["timestep"], step1["yaw_pred_deg"],
+        "--", label="1-step ahead", alpha=0.7)
+ax.plot(step5["timestep"], step5["yaw_pred_deg"],
+        "--", label="5-step ahead", alpha=0.6)
+ax.plot(step10["timestep"], step10["yaw_pred_deg"],
+        "--", label="10-step ahead", alpha=0.5)
+ax.set_xlabel("Timestep", fontsize=12)
+ax.set_ylabel("Yaw Angle (degrees)", fontsize=12)
+ax.set_title(f"Yaw Angle: Multi-Step Predictions ({start_timestep}–{end_timestep})",
+             fontweight="bold", fontsize=13)
+ax.legend(loc='best')
+ax.grid(True, alpha=0.3)
 
-    ax.plot(s10["timestep"], s10[f"{angle_name}_pred_deg"],
-            "--", label="10-step ahead", alpha=0.5)
-
-    ax.set_xlabel("Timestep")
-    ax.set_ylabel(ylabel)
-    ax.set_title(
-        f"LSTM {angle_name.capitalize()} Angle: Multi-Step Predictions "
-        f"({start_timestep}–{end_timestep})",
-        fontweight="bold"
-    )
-    ax.legend()
-    ax.grid(True, alpha=0.3)
-    plt.tight_layout()
-    # plt.savefig(filename, dpi=300, bbox_inches="tight")
-    print(f"Saved plot to {filename}")
-    # plt.show()
-    plt.close()
-
-# =======================
-# Generate plots
-# =======================
-plot_angle(
-    gt_data, step1, step5, step10,
-    "roll", "Roll Angle (degrees)",
-    f"Results/roll_multistep_plot_{start_timestep}_{end_timestep}.png"
-)
-
-plot_angle(
-    gt_data, step1, step5, step10,
-    "pitch", "Pitch Angle (degrees)",
-    f"Results/pitch_multistep_plot_{start_timestep}_{end_timestep}.png"
-)
-
-plot_angle(
-    gt_data, step1, step5, step10,
-    "yaw", "Yaw Angle (degrees)",
-    f"Results/yaw_multistep_plot_{start_timestep}_{end_timestep}.png"
-)
+plt.tight_layout()
+filename = f"Results/LSTM/multistep_predictions_{start_timestep}_{end_timestep}.png"
+plt.savefig(filename, dpi=300, bbox_inches="tight")
+print(f"Saved combined plot to {filename}")
+plt.show()
 
 yaw_bias = (step1["yaw_pred_deg"] - step1["yaw_gt_deg"]).mean()
-print("Mean yaw bias (deg):", yaw_bias)
+print(f"Mean yaw bias (deg): {yaw_bias:.3f}")
 
-print("All plots generated successfully.")
+print("Combined plot generated successfully.")
