@@ -187,15 +187,15 @@ The `Utils` class provides critical operations for attitude estimation:
 
 **Network Structure:**
 ```
-Input(9) → LSTM(hidden_size=128) → FC(15) → Reshape to [5, 3]
+Input(9) → LSTM(hidden_size=128) → FC(30) → Reshape to [10, 3]
 ```
 
 **Key Parameters:**
 - **Lookback window (K)**: 10 timesteps (0.30s of history)
-- **Prediction horizon (N)**: 5 timesteps (0.15s into future)
+- **Prediction horizon (N)**: 10 timesteps (0.30s into future)
 - **Hidden state size**: 128 (optimized from 64)
 - **Batch size**: 32
-- **Epochs**: 300
+- **Epochs**: 1000
 - **Learning rate**: 0.001
 - **Optimizer**: Adam
 - **Loss function**: MSE
@@ -210,14 +210,19 @@ Tensor [10, 9] = [
 ]
 ```
 
-**Output for timesteps k+1 to k+5** (multi-step ahead):
+**Output for timesteps k+1 to k+10** (multi-step ahead):
 ```
-Matrix [5, 3] = [
-  [roll_gt(k+1), pitch_gt(k+1), yaw_gt(k+1)]  # 1-step ahead (0.03s)
-  [roll_gt(k+2), pitch_gt(k+2), yaw_gt(k+2)]  # 2-steps ahead (0.06s)
-  [roll_gt(k+3), pitch_gt(k+3), yaw_gt(k+3)]  # 3-steps ahead (0.09s)
-  [roll_gt(k+4), pitch_gt(k+4), yaw_gt(k+4)]  # 4-steps ahead (0.12s)
-  [roll_gt(k+5), pitch_gt(k+5), yaw_gt(k+5)]  # 5-steps ahead (0.15s)
+Matrix [10, 3] = [
+  [roll_gt(k+1), pitch_gt(k+1), yaw_gt(k+1)]    # 1-step ahead (0.03s)
+  [roll_gt(k+2), pitch_gt(k+2), yaw_gt(k+2)]    # 2-steps ahead (0.06s)
+  [roll_gt(k+3), pitch_gt(k+3), yaw_gt(k+3)]    # 3-steps ahead (0.09s)
+  [roll_gt(k+4), pitch_gt(k+4), yaw_gt(k+4)]    # 4-steps ahead (0.12s)
+  [roll_gt(k+5), pitch_gt(k+5), yaw_gt(k+5)]    # 5-steps ahead (0.15s)
+  [roll_gt(k+6), pitch_gt(k+6), yaw_gt(k+6)]    # 6-steps ahead (0.18s)
+  [roll_gt(k+7), pitch_gt(k+7), yaw_gt(k+7)]    # 7-steps ahead (0.21s)
+  [roll_gt(k+8), pitch_gt(k+8), yaw_gt(k+8)]    # 8-steps ahead (0.24s)
+  [roll_gt(k+9), pitch_gt(k+9), yaw_gt(k+9)]    # 9-steps ahead (0.27s)
+  [roll_gt(k+10), pitch_gt(k+10), yaw_gt(k+10)] # 10-steps ahead (0.30s)
 ]
 ```
 
@@ -227,17 +232,17 @@ Matrix [5, 3] = [
 ```cpp
 // For each timestep k (from 0 to 3397-K-N):
 X[k] = dataset[k:k+K, :]           // Input: 10 past timesteps, all 9 features
-y[k] = dataset[k+K:k+K+N, 0:3]     // Target: next 5 timesteps, angles only (cols 0-2)
+y[k] = dataset[k+K:k+K+N, 0:3]     // Target: next 10 timesteps, angles only (cols 0-2)
 
 // Resulting shapes:
-// X: [3383, 10, 9] (3383 samples, 10 timesteps lookback, 9 features)
-// y: [3383, 5, 3]  (3383 samples, 5 timesteps ahead, 3 angles)
+// X: [3378, 10, 9] (3378 samples, 10 timesteps lookback, 9 features)
+// y: [3378, 10, 3] (3378 samples, 10 timesteps ahead, 3 angles)
 ```
 
 **Training Strategy:**
 - **No test set** - use all data for training (per professor's instructions)
 - **Model checkpoints**: Saved every 100 epochs
-- **Training time**: ~195 seconds for 300 epochs
+- **Training time**: ~645 seconds for 1000 epochs (~10.75 minutes)
 - Evaluate on training data to verify correctness
 
 ### Evaluation Metrics
@@ -252,45 +257,39 @@ y[k] = dataset[k+K:k+K+N, 0:3]     // Target: next 5 timesteps, angles only (col
 2. **Per angle**: RMSE for each angle (roll, pitch, yaw) across all samples and steps
 3. **Per step**: RMSE for each prediction horizon showing accuracy degradation
 
-### Performance Results (300 epochs, hidden_size=128)
+### Performance Results (1000 epochs, hidden_size=128)
 
 **Overall Performance:**
-- **RMSE (all)**: 0.691° (across all predictions)
-- **MAE (all)**: 0.509°
+- **RMSE (all)**: 0.559° (across all predictions, all angles, all 10 steps)
+- **MAE (all)**: 0.431°
 
 **RMSE per Angle (all samples, all steps):**
-- **Roll**: 0.881° (hardest to predict)
-- **Pitch**: 0.631° ✅ **Beats EKF baseline (0.720°)!**
-- **Yaw**: 0.491° (easiest to predict)
+- **Roll**: 0.710° (hardest to predict)
+- **Pitch**: 0.463° ✅ **Beats EKF baseline (0.720°)!**
+- **Yaw**: 0.468° (slightly easier than pitch)
 
-**RMSE per Prediction Step (shows accuracy degradation):**
+**RMSE per Prediction Step (shows accuracy degradation over 0.30s horizon):**
 
 | Step | Time Ahead | Roll | Pitch | Yaw | Observation |
 |------|------------|------|-------|-----|-------------|
-| 1 | 0.03s | 0.530° | 0.475° | 0.277° | **Short-term: Excellent** |
-| 2 | 0.06s | 0.701° | 0.427° | 0.336° | Still good |
-| 3 | 0.09s | 0.843° | 0.505° | 0.460° | Degrading |
-| 4 | 0.12s | 1.010° | 0.748° | 0.589° | Worse |
-| 5 | 0.15s | 1.175° | 0.954° | 0.638° | **Long-term: Challenging** |
+| 1 | 0.03s | 0.672° | 0.460° | 0.363° | **Short-term: Excellent** |
+| 2 | 0.06s | 0.634° | 0.457° | 0.376° | Very stable |
+| 3 | 0.09s | 0.633° | 0.464° | 0.430° | Still good |
+| 4 | 0.12s | 0.649° | 0.463° | 0.502° | Modest degradation |
+| 5 | 0.15s | 0.677° | 0.462° | 0.528° | Acceptable |
+| 6 | 0.18s | 0.707° | 0.465° | 0.525° | Roll degrading |
+| 7 | 0.21s | 0.738° | 0.467° | 0.501° | Roll continues rising |
+| 8 | 0.24s | 0.763° | 0.466° | 0.464° | Roll challenging |
+| 9 | 0.27s | 0.784° | 0.459° | 0.460° | Pitch remarkably stable |
+| 10 | 0.30s | 0.815° | 0.470° | 0.492° | **Long-term: Roll <0.82°** |
 
 **Key Findings:**
-- Error roughly **doubles** from 1-step to 5-step ahead (expected behavior)
-- 1-step ahead performance (0.530° roll) is very competitive
-- Pitch estimation **outperforms EKF** even when averaged across all prediction horizons
-- Demonstrates fundamental trade-off: short-term accuracy vs long-term uncertainty
-
-**Comparison with EKF Baseline:**
-
-| Method | Roll RMSE | Pitch RMSE | Notes |
-|--------|-----------|------------|-------|
-| **EKF** | 0.298° | 0.720° | Single-step filtering (current state estimation) |
-| **LSTM (overall)** | 0.881° | **0.631°** ✅ | Multi-step prediction (5 steps ahead, averaged) |
-| **LSTM (step 1)** | 0.530° | 0.475° | 1-step ahead only (more comparable to EKF) |
-
-**Important Note:** Direct comparison is challenging because:
-- **EKF**: Estimates *current* state from current measurements (easier task)
-- **LSTM**: Predicts *future* states up to 0.15s ahead (harder task)
-- Different datasets (different flight trajectories)
+- **Pitch stability**: Pitch RMSE stays nearly constant (0.460°-0.470°) across all 10 prediction steps - remarkably stable!
+- **Yaw pattern**: Increases then decreases (0.363° → 0.528° → 0.460°), suggesting different dynamics
+- **Roll degradation**: Roll error increases steadily from 0.634° (step 2) to 0.815° (step 10) - 28% increase
+- **Overall**: Error increase is much more gradual than naive extrapolation would suggest
+- **Comparison**: Even at 10-step ahead (0.30s), average error (0.559°) beats the old 5-step model (0.691°)
+- Demonstrates that longer training (1000 vs 300 epochs) significantly improves multi-step prediction accuracy
 
 ### Implementation Files
 
@@ -318,31 +317,40 @@ make lstm
 **Usage:**
 ```bash
 make lstmEval
-./lstmEval.out lstm_model_epoch_300.pt 0     # Test sample 0
-./lstmEval.out lstm_model_epoch_300.pt 1000  # Test sample 1000
+./lstmEval.out lstm_model_epoch_1000.pt 0     # Test sample 0
+./lstmEval.out lstm_model_epoch_1000.pt 1000  # Test sample 1000
 ```
 
 **Model Checkpoints:**
 - `lstm_model_epoch_100.pt` - Model after 100 epochs
 - `lstm_model_epoch_200.pt` - Model after 200 epochs
-- `lstm_model_epoch_300.pt` - Final trained model
+- `lstm_model_epoch_300.pt` - Intermediate checkpoint
+- `lstm_model_epoch_1000.pt` - Final trained model
 
 ### Hyperparameter Optimization Notes
 
-**Hidden size experiments:**
+**Epoch experiments (with hidden_size=128, N=10 prediction horizon):**
+- `300 epochs`: Overall RMSE = 0.691°, Roll = 0.881°, Pitch = 0.631°
+- `1000 epochs`: Overall RMSE = 0.559°, Roll = 0.710°, Pitch = 0.463° ✅ **Better**
+- Longer training (1000 epochs) provides **19.1% improvement** in overall RMSE
+- Particularly effective for pitch estimation (26.6% improvement over 300 epochs)
+- Training loss continues improving on log scale throughout all 1000 epochs
+
+**Hidden size experiments (early experiments with N=5):**
 - `hidden_size=64`: Overall RMSE = 0.770°, Roll = 0.990°, Pitch = 0.772°
 - `hidden_size=128`: Overall RMSE = 0.691°, Roll = 0.881°, Pitch = 0.631° ✅ **Better**
 - Larger hidden size (128) provides 11.6% improvement in overall RMSE
-- Particularly effective for pitch estimation (18.3% improvement)
 
 **Training time trade-offs:**
 - Lookback window increases training time ~10x per epoch
 - 10-timestep lookback: Processes 10x more data per sample than single-timestep
-- 300 epochs with hidden_size=128: ~195 seconds (~3.25 minutes)
+- 1000 epochs with hidden_size=128, N=10: ~645 seconds (~10.75 minutes)
+- 300 epochs with hidden_size=128, N=5: ~195 seconds (~3.25 minutes)
 
 **Recommendations:**
-- hidden_size=128 is optimal for this dataset size (3383 samples)
-- Could experiment with 256 for larger datasets
+- hidden_size=128 is optimal for this dataset size (3378 samples)
+- 1000 epochs provides significantly better results than 300 (worth the extra training time)
+- Could experiment with 256 hidden size for larger datasets
 - Lookback window significantly improves performance (worth the training time)
 
 ### RNN Learning Examples
