@@ -1,12 +1,13 @@
 # Simple Makefile for RNN/LSTM examples
 
-# Libtorch paths
+# UPDATE with the directory you unzipped libtorch
 LIBTORCH_PATH = /home/kostakis/dev/libtorch
+
 LIBTORCH_INCLUDE = -I$(LIBTORCH_PATH)/include -I$(LIBTORCH_PATH)/include/torch/csrc/api/include
+UTILS_LIBRARY_INCLUDE = -Iinclude
+
 LIBTORCH_LIBS = -L$(LIBTORCH_PATH)/lib -ltorch -ltorch_cpu -lc10
 LIBTORCH_RPATH = -Wl,-rpath,$(LIBTORCH_PATH)/lib
-
-CSVLIBRARY_INCLUDE = -Iinclude/
 
 # Compiler flags
 CXX = g++
@@ -25,12 +26,12 @@ lstmExample: lstmExample.cpp
 		$(LIBTORCH_LIBS) $(LIBTORCH_RPATH)
 
 lstm: lstmMain.cpp
-	$(CXX) $(CXXFLAGS) $(LIBTORCH_INCLUDE) $(CSVLIBRARY_INCLUDE) \
+	$(CXX) $(CXXFLAGS) $(LIBTORCH_INCLUDE) $(UTILS_LIBRARY_INCLUDE) \
 		lstmMain.cpp -o lstm.out \
 		$(LIBTORCH_LIBS) $(LIBTORCH_RPATH)
 
 lstmEval: lstmEval.cpp
-	$(CXX) $(CXXFLAGS) $(LIBTORCH_INCLUDE) $(CSVLIBRARY_INCLUDE) \
+	$(CXX) $(CXXFLAGS) $(LIBTORCH_INCLUDE) $(UTILS_LIBRARY_INCLUDE) \
 		lstmEval.cpp -o lstmEval.out \
 		$(LIBTORCH_LIBS) $(LIBTORCH_RPATH)
 
