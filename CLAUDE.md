@@ -8,12 +8,10 @@ This is a C++14 diploma thesis project implementing and comparing attitude estim
 
 **Implemented Algorithms:**
 - Complementary Filter: Basic weighted sensor fusion baseline
-- Mahony Filter: Nonlinear complementary filter on SO(3) (current best performer)
+- Mahony Filter: Nonlinear complementary filter on SO(3) - best classical filter
 - Explicit Complementary Filter: Vector-based filter with bias estimation
 - Extended Kalman Filter (EKF): Quaternion-based probabilistic state estimation
-
-**Planned Work:**
-- RNN Hybrid Architecture: Integrating LSTM/GRU with classical filters using LibTorch (see `MDFiles/RNN_Hybrid_Architecture.md`)
+- **LSTM Multi-Step Ahead Predictor** ✅: Deep learning approach using LibTorch (C++) - **best overall performance for pitch (0.463°)**
 
 ## Build Commands
 
@@ -48,27 +46,35 @@ make clean
 **Visualize Results:**
 ```bash
 cd Results
-python plotDiagrams.py           # General plotting
-python plotDiagrams_zoomed.py    # Zoomed-in analysis
-python analyze_dynamics.py       # Gyro/Accel magnitude vs Error
+python3 plotDiagrams.py           # General plotting
+python3 plotDiagrams_zoomed.py    # Zoomed-in analysis
+python3 analyze_dynamics.py       # Gyro/Accel magnitude vs Error
 ```
 
-**RNN Examples and Development:**
+**LSTM Training and Evaluation:**
 ```bash
 cd RNN
 
-# Python learning examples (for understanding LSTM/RNN concepts)
+# Train LSTM model (requires LibTorch)
+make lstm
+./lstm.out                # Train with default 300 epochs
+./lstm.out -epochs 1000   # Train for 1000 epochs (recommended)
+
+# Evaluate and export predictions
+make lstmEval
+./lstmEval.out lstm_model_epoch_1000.pt --save-all  # Generate predictions CSV
+
+# Python visualization (requires Results/lstm_predictions.csv)
+python3 plot_multistep_predictions.py 0 50      # Multi-step comparison plot
+python3 plot_predictions.py 0 100               # Single-step prediction plot
+python3 plot_single_pred.py 50                  # Single sample analysis
+python3 plot_rmse_errors.py                     # Training loss curve
+
+# Learning examples (optional - for understanding LSTM concepts)
+# Do not use them directly just here for reference
 cd Python
-python hello_rnn.py      # Basic RNN: learns to add 1 to sequence
-python hello_lstm.py     # Basic LSTM: same task, demonstrates architecture differences
-
-# C++ LibTorch examples and production code
-cd ..
-# Edit Makefile line 7-8 to set LIBTORCH_PATH to your libtorch installation
-make
-./example.out            # Runs C++ RNN learning example
-
-# Production RNN hybrid will be implemented in C++ using LibTorch
+python3 hello_rnn.py      # Basic RNN example
+python3 hello_lstm.py     # Basic LSTM example
 ```
 
 ## Code Architecture
@@ -305,20 +311,28 @@ y[k] = dataset[k+K:k+K+N, 0:3]     // Target: next 10 timesteps, angles only (co
 ```bash
 cd RNN
 make lstm
-./lstm.out
+./lstm.out                # Default 300 epochs
+./lstm.out -epochs 1000   # Custom number of epochs
+./lstm.out --help         # Show usage
 ```
 
 **Evaluation Program:** `RNN/lstmEval.cpp`
 - Loads saved model checkpoint
-- Tests on single samples from dataset
-- Shows input sequence, predictions, and ground truth
-- Useful for debugging and understanding model behavior
+- Two modes: single sample evaluation OR full dataset prediction export
+- **Single sample mode**: Shows input sequence, predictions, and ground truth for debugging
+- **Export mode**: Generates CSV with all predictions for visualization
 
 **Usage:**
 ```bash
 make lstmEval
+# Single sample evaluation
 ./lstmEval.out lstm_model_epoch_1000.pt 0     # Test sample 0
 ./lstmEval.out lstm_model_epoch_1000.pt 1000  # Test sample 1000
+
+# Generate full predictions CSV (for plotting)
+./lstmEval.out lstm_model_epoch_1000.pt --save-all
+# Creates Results/lstm_predictions.csv with columns:
+# timestep, step_ahead, roll_pred, pitch_pred, yaw_pred, roll_gt, pitch_gt, yaw_gt
 ```
 
 **Model Checkpoints:**
@@ -353,6 +367,13 @@ make lstmEval
 - Could experiment with 256 hidden size for larger datasets
 - Lookback window significantly improves performance (worth the training time)
 
+**Training Convergence Pattern:**
+- **Rapid initial convergence**: 96% error reduction in first 50 epochs (0.614° → 0.022°)
+- **Plateau phase**: Minimal improvement from epoch 50-1000 (0.022° → 0.003°)
+- **Expected behavior**: Network learns main dynamics quickly, then fine-tunes
+- **Early stopping viable**: Could stop at epoch 200-300 with minimal performance loss
+- **Why fast convergence**: Ground truth angles in input + smooth temporal dynamics + well-sized architecture
+
 ### RNN Learning Examples
 
 The `RNN/` directory contains educational examples in both Python and C++:
@@ -367,18 +388,6 @@ These examples use sequence input shape `(batch=1, seq_len=5, features=1)` and d
 - Training loop with MSELoss and Adam optimizer
 - Difference between RNN (hidden state only) and LSTM (cell + hidden state + gates)
 
-## IDE Setup for clangd
-
-The project uses `compile_commands.json` for LSP-based tooling. Generate it with:
-
-```bash
-sudo apt install bear  # if not installed
-make clean
-bear -- make all
-```
-
-VSCode settings recommended in README.md disable Microsoft C++ IntelliSense in favor of clangd for better performance.
-
 ## Important File Locations
 
 - **Mathematical Documentation**: `MDFiles/` contains detailed derivations and verification reports
@@ -386,11 +395,3 @@ VSCode settings recommended in README.md disable Microsoft C++ IntelliSense in f
 - **Parameter Tuning**: See filter main files for optimized constants (e.g., Mahony kp=11, Complementary alpha=0.9)
 - **RNN Architecture Plan**: `MDFiles/RNN_Hybrid_Architecture.md` describes upcoming deep learning integration
 - **Build Configuration**: Makefile uses `-std=c++14 -g -Iinclude` flags, outputs to `build/` and `bin/`
-
-## Common Pitfalls
-
-- **Eigen version mismatch**: Code only compiles with Eigen 3.4.1. Check with `cat /usr/include/eigen3/Eigen/src/Core/util/Macros.h | grep EIGEN_WORLD_VERSION`
-- **Misspellings in targets**: Note `complemntaryFilter` target and `complmentary.out` binary (missing 'e')
-- **Data file paths**: All filters expect `Data/` directory in repository root
-- **Units**: Gyro in rad/s, accel in m/s�, ground truth in radians (converted to degrees for display)
-- **Result file overwrites**: Running filters overwrites previous results in `Results/Results/` directory
