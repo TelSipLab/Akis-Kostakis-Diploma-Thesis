@@ -12,6 +12,9 @@ ln -s ../Results/ .
 ln -s ../Data .
 ln -s ../include .
 
+900 -> Regularazation
+
+1000 -> The original
 
 # Train to google cloud
 

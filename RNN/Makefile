@@ -11,7 +11,7 @@ LIBTORCH_RPATH = -Wl,-rpath,$(LIBTORCH_PATH)/lib
 
 # Compiler flags
 CXX = g++
-CXXFLAGS = -std=c++17 -g -O0 -D_GLIBCXX_USE_CXX11_ABI=1
+CXXFLAGS = -std=c++17 -g -Wall -O0 -D_GLIBCXX_USE_CXX11_ABI=1
 
 all: example lstmExample lstm lstmEval
 
