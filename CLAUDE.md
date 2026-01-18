@@ -223,6 +223,7 @@ The `Utils` class provides critical operations for attitude estimation:
 
 ## Important File Locations
 
+- **Thesis Document**: `reportMsc.pdf` - Main thesis document being written
 - **Mathematical Documentation**: `MDFiles/` contains detailed derivations and verification reports
 - **Research Papers**: `Pappers/` includes foundational literature (Mahony, Kalman, quaternion-based EKF)
 - **Parameter Tuning**: See filter main files for optimized constants (e.g., Mahony kp=11, Complementary alpha=0.9)
