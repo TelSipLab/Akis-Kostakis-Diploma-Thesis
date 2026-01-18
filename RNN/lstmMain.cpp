@@ -5,10 +5,25 @@
 #include <string>
 #include <iostream>
 #include <iomanip>
+#include <random>
+#include <algorithm>
 
 #include <torch/torch.h>
 
 using torch::Tensor;
+
+void setRandomSeeds(unsigned int seed) {
+    // C++
+    std::srand(seed);
+
+    // PyTorch/LibTorch
+    torch::manual_seed(seed);
+
+    if (torch::cuda::is_available()) {
+        torch::cuda::manual_seed(seed);
+        torch::cuda::manual_seed_all(seed);
+    }
+}
 
 // Print evaluation metrics in a formatted way
 void printMetrics(double rmseValue, double maeValue,
@@ -100,20 +115,28 @@ private:
 int main(int argc, char* argv[]) {
     // Parse command-line arguments
     int numEpochs = 300;  // Default value
+    unsigned int randomSeed = 42;  // Default seed for reproducibility
 
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
         if ((arg == "-epochs" || arg == "--epochs") && i + 1 < argc) {
             numEpochs = std::atoi(argv[i + 1]);
             i++;  // Skip next argument
+        } else if ((arg == "-seed" || arg == "--seed") && i + 1 < argc) {
+            randomSeed = std::atoi(argv[i + 1]);
+            i++;  // Skip next argument
         } else if (arg == "-h" || arg == "--help") {
             std::cout << "Usage: " << argv[0] << " [options]" << std::endl;
             std::cout << "Options:" << std::endl;
             std::cout << "  -epochs N, --epochs N   Number of training epochs (default: 300)" << std::endl;
+            std::cout << "  -seed N, --seed N       Random seed for reproducibility (default: 42)" << std::endl;
             std::cout << "  -h, --help              Show this help message" << std::endl;
             return 0;
         }
     }
+
+    // Set random seeds for reproducibility
+    setRandomSeeds(randomSeed);
 
     const int lookbackWindow = 10;
     const int windowSize = 10;           // Predict next 10 timesteps
@@ -122,11 +145,12 @@ int main(int argc, char* argv[]) {
 
     std::cout << "LSTM Multi-Step Ahead Prediction" << std::endl;
     std::cout << "Configuration:" << std::endl;
-    std::cout << "Lookback window (K): " <<  lookbackWindow << " timesteps" << std::endl;
+    std::cout << "  Lookback window (K): " <<  lookbackWindow << " timesteps" << std::endl;
     std::cout << "  Prediction horizon (N): " << windowSize << " timesteps" << std::endl;
     std::cout << "  Input features: " << NUM_INPUT_FEATURES << std::endl;
     std::cout << "  Output features: " << NUM_OUTPUT_FEATURES << std::endl;
     std::cout << "  Epochs: " << numEpochs << std::endl;
+    std::cout << "  Random seed: " << randomSeed << std::endl;
     std::cout << std::endl;
 
     CsvReader datasetReader("Data/dataset_1.csv");
@@ -195,18 +219,36 @@ int main(int argc, char* argv[]) {
     std::cout << "Starting Training" << std::endl;
     model->train();  // Set model to training mode
 
+    // Vector holding one index for each sample
+    std::vector<int> indices(trainingSamples);
+    for (int i = 0; i < trainingSamples; i++) {
+        indices[i] = i;
+    }
+
+    std::mt19937 rng(randomSeed);
+
     auto start = std::chrono::steady_clock::now();
     for (int epoch = 0; epoch < numEpochs; epoch++) {
         double epochLoss = 0.0;
         int numBatches = 0;
 
-        // Traing per batch
-        for (int i = 0; i < trainingSamples; i += batchSize) {
-            int currentBatchSize = std::min(batchSize, trainingSamples - i);
+        // Shuffle indices at the beginning of each epoch
+        std::shuffle(indices.begin(), indices.end(), rng);
 
-            // Extract batch
-            Tensor batchX = X.slice(0, i, i + currentBatchSize);
-            Tensor batchY = y.slice(0, i, i + currentBatchSize);
+        // Training per batch
+        for (int batchStart = 0; batchStart < trainingSamples; batchStart += batchSize) {
+            int currentBatchSize = std::min(batchSize, trainingSamples - batchStart);
+
+            // Extract batch using shuffled indices
+            std::vector<Tensor> batchXList, batchYList;
+            for (int i = 0; i < currentBatchSize; i++) {
+                int idx = indices[batchStart + i];
+                batchXList.push_back(X[idx]);
+                batchYList.push_back(y[idx]);
+            }
+
+            Tensor batchX = torch::stack(batchXList);
+            Tensor batchY = torch::stack(batchYList);
 
             // Flatten target: [batch, N, 3] -> [batch, N*3]
             Tensor batchYFlat = batchY.reshape({currentBatchSize, -1});
