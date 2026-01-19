@@ -35,30 +35,50 @@ private:
     torch::nn::Linear fc{nullptr};
 };
 
-int main(int argc, char* argv[]) {
-    if (argc < 2) {
-        std::cout << "Usage: ./lstmEval.out <model_path> [options]" << std::endl;
-        std::cout << "Options:" << std::endl;
-        std::cout << "  [sample_index]       Evaluate single sample (e.g., 0, 1000)" << std::endl;
-        std::cout << "  --save-all, -a       Generate predictions for ALL samples and save to CSV" << std::endl;
-        std::cout << std::endl;
-        std::cout << "Examples:" << std::endl;
-        std::cout << "  ./lstmEval.out lstm_model_epoch_300.pt 0" << std::endl;
-        std::cout << "  ./lstmEval.out lstm_model_epoch_300.pt --save-all" << std::endl;
-        return 1;
+bool isNumber(const std::string& str) {
+    if (str.empty()) return false;
+    
+    try {
+        std::size_t pos;
+        std::stoi(str, &pos);
+        return pos == str.length(); // ensure entire string was converted
+    } catch (const std::invalid_argument&) {
+        return false;
+    } catch (const std::out_of_range&) {
+        return false;
     }
+}
 
-    std::string modelPath = argv[1];
+int main(int argc, char* argv[]) {
     bool saveAll = false;
+    std::string modelPath;
     int sampleIndex = 0;
 
-    // Parse arguments
-    if (argc >= 3) {
-        std::string arg = argv[2];
-        if (arg == "--save-all" || arg == "-a") {
+    if(argc == 1) {
+        std::cout << "Wrong input use -h to see help" << std::endl;
+        return -1;
+    }
+
+    modelPath = argv[1];
+
+    for (int i = 2; i < argc; i++) {
+        std::string arg = argv[i];
+        if(arg == "--save-all" || arg == "-a" ) {
             saveAll = true;
+        } else if(i == 2 && isNumber(arg)) {
+            sampleIndex = std::stoi(arg);
+        } else if (arg == "--help" || arg == "-h") {
+            std::cout << "Usage: ./lstmEval.out <model_path> [options]" << std::endl;
+            std::cout << "Options:" << std::endl;
+            std::cout << "  [sample_index]       Evaluate single sample (e.g., 0, 1000)" << std::endl;
+            std::cout << "  --save-all, -a       Generate predictions for ALL samples and save to CSV" << std::endl;
+            std::cout << std::endl;
+            std::cout << "Examples:" << std::endl;
+            std::cout << "  ./lstmEval.out lstm_model_epoch_300.pt 0" << std::endl;
+            std::cout << "  ./lstmEval.out lstm_model_epoch_300.pt --save-all" << std::endl;
+            return 0;
         } else {
-            sampleIndex = std::atoi(argv[2]);
+            std::cout << "Wrong argument use -h to view help" << std::endl;
         }
     }
 
