@@ -1,36 +1,52 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import argparse
 
-# Load datasets
-rollComplementary = np.loadtxt('Results/Results/ComplementaryRoll_a_0_79.txt')
-rollMahony = np.loadtxt('Results/Results/MahonyRoll_kp_11.txt')
-rollEKF = np.loadtxt('Results/Results/EkfRoll.txt')
-rollExplicitCF = np.loadtxt('Results/Results/ExplicitComplementaryRoll.txt')
-rollGroundTruth = np.loadtxt('Results/ExpectedResults/expected_roll.txt')
+# Parse command-line arguments
+parser = argparse.ArgumentParser(description='Analyze filter performance vs sensor dynamics')
+parser.add_argument('angle', choices=['roll', 'pitch'], help='Angle to analyze (roll or pitch)')
+args = parser.parse_args()
+
+angle = args.angle
+angle_cap = angle.capitalize()
+
+# Load datasets based on angle selection
+if angle == 'roll':
+    dataComplementary = np.loadtxt('Results/Results/ComplementaryRoll_a_0_79.txt')
+    dataMahony = np.loadtxt('Results/Results/MahonyRoll_kp_11.txt')
+    dataEKF = np.loadtxt('Results/Results/EkfRoll.txt')
+    dataExplicitCF = np.loadtxt('Results/Results/ExplicitComplementaryRoll.txt')
+    dataGroundTruth = np.loadtxt('Results/ExpectedResults/expected_roll.txt')
+else:  # pitch
+    dataComplementary = np.loadtxt('Results/Results/ComplementaryPitch_a_0_79.txt')
+    dataMahony = np.loadtxt('Results/Results/MahonyPitch_kp_11.txt')
+    dataEKF = np.loadtxt('Results/Results/EkfPitch.txt')
+    dataExplicitCF = np.loadtxt('Results/Results/ExplicitComplementaryPitch.txt')
+    dataGroundTruth = np.loadtxt('Results/ExpectedResults/expected_pitch.txt')
 
 # Load sensor data
 gyroData = np.loadtxt('Data/gyro.csv', delimiter=',')
 accelData = np.loadtxt('Data/accel.csv', delimiter=',')
 
 # Same sample window as before
-total_samples = len(rollGroundTruth)
+total_samples = len(dataGroundTruth)
 sample_size = total_samples
 start_idx = 0
 end_idx = total_samples
 
 # Extract samples
-rollComp_sample = rollComplementary[start_idx:end_idx]
-rollMahony_sample = rollMahony[start_idx:end_idx]
-rollEKF_sample = rollEKF[start_idx:end_idx]
-rollExplicitCF_sample = rollExplicitCF[start_idx:end_idx]
-rollTruth_sample = rollGroundTruth[start_idx:end_idx]
+comp_sample = dataComplementary[start_idx:end_idx]
+mahony_sample = dataMahony[start_idx:end_idx]
+ekf_sample = dataEKF[start_idx:end_idx]
+explicitCF_sample = dataExplicitCF[start_idx:end_idx]
+truth_sample = dataGroundTruth[start_idx:end_idx]
 time_indices = np.arange(start_idx, end_idx)
 
-# Calculate errors (squared for RMSE calculation)
-error_complementary = rollComp_sample - rollTruth_sample
-error_mahony = rollMahony_sample - rollTruth_sample
-error_ekf = rollEKF_sample - rollTruth_sample
-error_explicitCF = rollExplicitCF_sample - rollTruth_sample
+# Calculate errors
+error_complementary = comp_sample - truth_sample
+error_mahony = mahony_sample - truth_sample
+error_ekf = ekf_sample - truth_sample
+error_explicitCF = explicitCF_sample - truth_sample
 
 # Absolute errors for plotting
 abs_error_complementary = np.abs(error_complementary)
@@ -55,47 +71,41 @@ rmse_ekf = np.sqrt(np.mean(error_ekf**2))
 rmse_explicitCF = np.sqrt(np.mean(error_explicitCF**2))
 
 # Create multi-panel figure
-fig, axes = plt.subplots(4, 1, figsize=(14, 12), sharex=True)
+fig, axes = plt.subplots(3, 1, figsize=(14, 12), sharex=True)
 
-# Panel 1: Roll angle comparison
-axes[0].plot(time_indices, rollTruth_sample, 'k-', linewidth=2, label='Ground Truth', alpha=0.7)
-axes[0].plot(time_indices, rollComp_sample, 'b--', linewidth=1.5, label='Complementary', alpha=0.8)
-axes[0].plot(time_indices, rollMahony_sample, 'r-.', linewidth=1.5, label='Mahony', alpha=0.8)
-axes[0].plot(time_indices, rollEKF_sample, 'g:', linewidth=2, label='EKF', alpha=0.8)
-axes[0].plot(time_indices, rollExplicitCF_sample, 'c-', linewidth=1.5, label='Explicit CF', alpha=0.8)
-axes[0].set_ylabel('Roll Angle (deg)', fontsize=11)
-axes[0].set_title('Roll Angle Estimation Comparison with Sensor Dynamics', fontsize=13)
-axes[0].legend(loc='best')
-axes[0].grid(True, alpha=0.3)
+# Panel 1: Estimation errors
+panel_number = 0
+axes[panel_number].plot(time_indices, abs_error_complementary, 'b-', linewidth=1.5, label=f'Complementary - RMSE: {rmse_complementary:.3f} deg', alpha=0.7)
+axes[panel_number].plot(time_indices, abs_error_mahony, 'r-', linewidth=1.5, label=f'Mahony - RMSE: {rmse_mahony:.3f} deg', alpha=0.7)
+axes[panel_number].plot(time_indices, abs_error_ekf, 'g-', linewidth=1.5, label=f'EKF - RMSE: {rmse_ekf:.3f} deg', alpha=0.7)
+axes[panel_number].plot(time_indices, abs_error_explicitCF, 'c-', linewidth=1.5, label=f'Explicit CF - RMSE: {rmse_explicitCF:.3f} deg', alpha=0.7)
+axes[panel_number].set_ylabel('Absolute Error (deg)', fontsize=11)
+axes[panel_number].set_title(f'{angle_cap} Angle Estimation Error with Sensor Dynamics', fontsize=13)
+axes[panel_number].legend(loc='best')
+axes[panel_number].grid(True, alpha=0.3)
 
-# Panel 2: Estimation errors
-axes[1].plot(time_indices, abs_error_complementary, 'b-', linewidth=1.5, label=f'Complementary - RMSE: {rmse_complementary:.3f} deg', alpha=0.7)
-axes[1].plot(time_indices, abs_error_mahony, 'r-', linewidth=1.5, label=f'Mahony - RMSE: {rmse_mahony:.3f} deg', alpha=0.7)
-axes[1].plot(time_indices, abs_error_ekf, 'g-', linewidth=1.5, label=f'EKF - RMSE: {rmse_ekf:.3f} deg', alpha=0.7)
-axes[1].plot(time_indices, abs_error_explicitCF, 'c-', linewidth=1.5, label=f'Explicit CF - RMSE: {rmse_explicitCF:.3f} deg', alpha=0.7)
-axes[1].set_ylabel('Absolute Error (deg)', fontsize=11)
-axes[1].legend(loc='best')
-axes[1].grid(True, alpha=0.3)
+# Panel 2: Gyro magnitude (angular rate)
+panel_number = 1
+axes[panel_number].plot(time_indices, gyro_magnitude, 'g-', linewidth=1.5, label='Gyro Magnitude')
+axes[panel_number].set_ylabel('Angular Rate (rad/s)', fontsize=11)
+axes[panel_number].legend(loc='best')
+axes[panel_number].grid(True, alpha=0.3)
 
-# Panel 3: Gyro magnitude (angular rate)
-axes[2].plot(time_indices, gyro_magnitude, 'g-', linewidth=1.5, label='Gyro Magnitude')
-axes[2].set_ylabel('Angular Rate (rad/s)', fontsize=11)
-axes[2].legend(loc='best')
-axes[2].grid(True, alpha=0.3)
-
-# Panel 4: Accel magnitude
-axes[3].plot(time_indices, accel_magnitude, 'm-', linewidth=1.5, label='Accel Magnitude')
-axes[3].set_ylabel('Acceleration (m/s²)', fontsize=11)
-axes[3].set_xlabel('Sample Index', fontsize=12)
-axes[3].legend(loc='best')
-axes[3].grid(True, alpha=0.3)
+# Panel 3: Accel magnitude
+panel_number = 2
+axes[panel_number].plot(time_indices, accel_magnitude, 'm-', linewidth=1.5, label='Accel Magnitude')
+axes[panel_number].set_ylabel('Acceleration (m/s²)', fontsize=11)
+axes[panel_number].set_xlabel('Sample Index', fontsize=12)
+axes[panel_number].legend(loc='best')
+axes[panel_number].grid(True, alpha=0.3)
 
 plt.tight_layout()
-plt.savefig("Results/Figures/Roll_Dynamics_Analysis.png", dpi=150)
-print(f"Dynamics analysis plot saved: Roll_Dynamics_Analysis.png")
+output_file = f"Results/Figures/{angle_cap}_Dynamics_Analysis.png"
+plt.savefig(output_file, dpi=150)
+print(f"Dynamics analysis plot saved: {output_file}")
 
-# Print RMSE statistics (already calculated above for legend)
-print("\n=== Performance Analysis ===")
+# Print RMSE statistics
+print(f"\n=== {angle_cap} Performance Analysis ===")
 print(f"Sample window: {start_idx} to {end_idx} ({sample_size} samples)")
 print(f"\nComplementary Filter:")
 print(f"  RMSE: {rmse_complementary:.4f} deg")
@@ -128,6 +138,7 @@ rmse_explicitCF_low = np.sqrt(np.mean(error_explicitCF[low_dynamics_mask]**2))
 print(f"\n=== High Dynamics vs Low Dynamics Performance ===")
 print(f"High dynamics threshold: {high_dynamics_threshold:.4f} rad/s")
 print(f"High dynamics samples: {np.sum(high_dynamics_mask)} ({np.sum(high_dynamics_mask)/len(high_dynamics_mask)*100:.1f}%)")
+
 print(f"\nHigh Dynamics Period:")
 print(f"  Complementary RMSE: {rmse_comp_high:.4f} deg")
 print(f"  Mahony RMSE: {rmse_mahony_high:.4f} deg")
