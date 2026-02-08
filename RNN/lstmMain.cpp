@@ -70,6 +70,10 @@ public:
             torch::nn::LSTMOptions(inputSize, hiddenStateSize).batch_first(true)
         ));
 
+        // Attention layers
+        attn_linear = register_module("attn_linear", torch::nn::Linear(hiddenStateSize, hiddenStateSize));
+        attn_vector = register_module("attn_vector", torch::nn::Linear(hiddenStateSize, 1));
+
         fc = register_module("fc", torch::nn::Linear(hiddenStateSize, outputSize));
 
         this->to(torch::kDouble);
@@ -78,13 +82,18 @@ public:
     Tensor forward(Tensor X) {
         // Input: [batch, seq_len=10, features=9]
         auto lstmOutput = lstm->forward(X);
-        auto out = std::get<0>(lstmOutput); // Get output, shape: [batch, seq_len, hidden]
+        auto hiddenStates = std::get<0>(lstmOutput); // [batch, seq_len, hidden]
 
-        // Take last timestep output
-        out = out.select(1, -1);  // [batch, seq_len, hidden] → [batch, hidden]
+        // Attention: learn which timesteps matter most
+        auto energy = torch::tanh(attn_linear->forward(hiddenStates)); // [batch, seq_len, hidden]
+        auto scores = attn_vector->forward(energy).squeeze(-1);        // [batch, seq_len]
+        auto weights = torch::softmax(scores, /*dim=*/1);              // [batch, seq_len]
+
+        // Context vector: weighted sum of all hidden states
+        auto context = torch::bmm(weights.unsqueeze(1), hiddenStates).squeeze(1); // [batch, hidden]
 
         // Pass through FC layer
-        out = fc->forward(out);  // [batch, hidden] → [batch, output_size]
+        auto out = fc->forward(context);  // [batch, hidden] → [batch, output_size]
         return out;
     }
 
@@ -109,6 +118,8 @@ public:
     }
 private:
     torch::nn::LSTM lstm{nullptr};
+    torch::nn::Linear attn_linear{nullptr};
+    torch::nn::Linear attn_vector{nullptr};
     torch::nn::Linear fc{nullptr};
 };
 
@@ -198,7 +209,7 @@ int main(int argc, char* argv[]) {
     auto model = std::make_shared<LSTMNetwork>(NUM_INPUT_FEATURES, hiddenStateSize, outputSize);
 
     std::cout << "Model Created" << std::endl;
-    std::cout << "Architecture: Input(" << NUM_INPUT_FEATURES << ") -> LSTM(" << hiddenStateSize << ") -> FC(" << outputSize << ")" << std::endl;
+    std::cout << "Architecture: Input(" << NUM_INPUT_FEATURES << ") -> LSTM(" << hiddenStateSize << ") -> Attention -> FC(" << outputSize << ")" << std::endl;
     std::cout << std::endl;
 
     // Training parameters

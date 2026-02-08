@@ -17,6 +17,11 @@ public:
         lstm = register_module("lstm", torch::nn::LSTM(
             torch::nn::LSTMOptions(inputSize, hiddenStateSize).batch_first(true)
         ));
+
+        // Attention layers
+        attn_linear = register_module("attn_linear", torch::nn::Linear(hiddenStateSize, hiddenStateSize));
+        attn_vector = register_module("attn_vector", torch::nn::Linear(hiddenStateSize, 1));
+
         fc = register_module("fc", torch::nn::Linear(hiddenStateSize, outputSize));
         this->to(torch::kDouble);
     }
@@ -24,14 +29,25 @@ public:
     Tensor forward(Tensor X) {
         // Input: [batch, seq_len=10, features=9]
         auto lstmOutput = lstm->forward(X);
-        auto out = std::get<0>(lstmOutput);
-        out = out.select(1, -1);  // Take last timestep
-        out = fc->forward(out);
+        auto hiddenStates = std::get<0>(lstmOutput); // [batch, seq_len, hidden]
+
+        // Attention: learn which timesteps matter most
+        auto energy = torch::tanh(attn_linear->forward(hiddenStates)); // [batch, seq_len, hidden]
+        auto scores = attn_vector->forward(energy).squeeze(-1);        // [batch, seq_len]
+        auto weights = torch::softmax(scores, /*dim=*/1);              // [batch, seq_len]
+
+        // Context vector: weighted sum of all hidden states
+        auto context = torch::bmm(weights.unsqueeze(1), hiddenStates).squeeze(1); // [batch, hidden]
+
+        // Pass through FC layer
+        auto out = fc->forward(context);  // [batch, output_size]
         return out;
     }
 
 private:
     torch::nn::LSTM lstm{nullptr};
+    torch::nn::Linear attn_linear{nullptr};
+    torch::nn::Linear attn_vector{nullptr};
     torch::nn::Linear fc{nullptr};
 };
 
