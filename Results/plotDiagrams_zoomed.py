@@ -74,15 +74,17 @@ groundTruthData_zoom = groundTruthData[start_time:end_time]
 time_axis = np.arange(start_time, end_time)
 
 # Create a plot with larger figure size
-plt.figure(figsize=(12, 8))
+plt.figure(figsize=(10, 7))
+plt.tick_params(axis='both', labelsize=14)
+
 plt.plot(time_axis, predictedData_zoom, label=f'Estimated {angle_cap}', linestyle='-', linewidth=2, markersize=4, color='#ff7f0e')
 plt.plot(time_axis, groundTruthData_zoom, label=f'Ground Truth', linestyle='--', linewidth=2, markersize=4, color='#1f77b4')
 
 # Add labels, title, and grid
-plt.xlabel('Sample Index', fontsize=14)
-plt.ylabel(f'{angle_cap} Angle (degrees)', fontsize=14)
+plt.xlabel('Sample Index', fontsize=16)
+plt.ylabel(f'{angle_cap} Angle (degrees)', fontsize=16)
 plt.title(f"Zoomed View: {angle_cap} - {config['name']} (samples {start_time}-{end_time})", fontsize=14)
-plt.legend(fontsize=12)
+plt.legend(fontsize=14)
 plt.grid(True, alpha=0.3)
 
 # Dynamically set y-axis limits with some padding
@@ -94,13 +96,13 @@ plt.ylim(y_min - y_margin, y_max + y_margin)
 # Display RMSE and param on the plot
 plt.text(0.05, 0.95, f'{angle_cap} RMSE (full data): {rmse:.3f} deg',
          transform=plt.gca().transAxes,
-         fontsize=12, color='black', verticalalignment='top',
+         fontsize=14, color='black', verticalalignment='top',
          bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
 
 if config['param']:
     plt.text(0.05, 0.89, config['param'],
              transform=plt.gca().transAxes,
-             fontsize=12, color='black', verticalalignment='top',
+             fontsize=14, color='black', verticalalignment='top',
              bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
 
 # Reduce whitespace margins

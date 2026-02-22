@@ -72,35 +72,40 @@ pitch_pred_zoom = pitchPredicted[start_idx:end_idx]
 pitch_truth_zoom = pitchGroundTruth[start_idx:end_idx]
 time_axis = np.arange(start_idx, end_idx)
 
+
 # Create 2-row subplot
-fig, axes = plt.subplots(2, 1, figsize=(14, 10), sharex=True)
+fig, axes = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
+
+axes[0].tick_params(axis='both', labelsize=14)
+axes[1].tick_params(axis='both', labelsize=14)
 
 # Panel 1: Roll
 axes[0].plot(time_axis, roll_pred_zoom, label='Estimated Roll', linestyle='-', linewidth=1.5, color='#ff7f0e')
 axes[0].plot(time_axis, roll_truth_zoom, label='Ground Truth', linestyle='--', linewidth=1.5, color='#1f77b4')
-axes[0].set_ylabel('Roll Angle (degrees)', fontsize=12)
+axes[0].set_ylabel('Roll Angle (degrees)', fontsize=14)
 axes[0].set_title(f'{config["name"]} - Roll & Pitch Estimation (samples {start_idx}-{end_idx})', fontsize=14)
-axes[0].legend(loc='upper right', fontsize=10)
+axes[0].legend(loc='upper right', fontsize=14)
 axes[0].grid(True, alpha=0.3)
 
 # Add RMSE text for roll
 rmse_text = f'Roll RMSE: {config["roll_rmse"]:.3f} deg'
 if config['param']:
     rmse_text += f'  |  {config["param"]}'
-axes[0].text(0.02, 0.95, rmse_text, transform=axes[0].transAxes, fontsize=11,
+axes[0].text(0.02, 0.95, rmse_text, transform=axes[0].transAxes, fontsize=13,
              verticalalignment='top', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
 
 # Panel 2: Pitch
 axes[1].plot(time_axis, pitch_pred_zoom, label='Estimated Pitch', linestyle='-', linewidth=1.5, color='#ff7f0e')
 axes[1].plot(time_axis, pitch_truth_zoom, label='Ground Truth', linestyle='--', linewidth=1.5, color='#1f77b4')
-axes[1].set_ylabel('Pitch Angle (degrees)', fontsize=12)
-axes[1].set_xlabel('Sample Index', fontsize=12)
-axes[1].legend(loc='upper right', fontsize=10)
+axes[1].set_ylabel('Pitch Angle (degrees)', fontsize=16)
+axes[1].set_xlabel('Sample Index', fontsize=16)
+axes[1].legend(loc='upper right', fontsize=14)
 axes[1].grid(True, alpha=0.3)
 
 # Add RMSE text for pitch
 axes[1].text(0.02, 0.95, f'Pitch RMSE: {config["pitch_rmse"]:.3f} deg', transform=axes[1].transAxes,
-             fontsize=11, verticalalignment='top', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+             fontsize=13, verticalalignment='top', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+
 
 plt.tight_layout()
 
