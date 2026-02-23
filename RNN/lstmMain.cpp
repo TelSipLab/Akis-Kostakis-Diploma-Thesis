@@ -66,33 +66,50 @@ void printMetrics(double rmseValue, double maeValue,
 class LSTMNetwork: public torch::nn::Module {
 public:
     LSTMNetwork(int inputSize, int hiddenStateSize, int outputSize) {
+        // 1. Standard LSTM layer
         lstm = register_module("lstm", torch::nn::LSTM(
             torch::nn::LSTMOptions(inputSize, hiddenStateSize).batch_first(true)
         ));
+    
 
-        // Attention layers
+        //2. Attention Projection: Learns a non-linear representation of the higgen states
         attn_linear = register_module("attn_linear", torch::nn::Linear(hiddenStateSize, hiddenStateSize));
+        
+        // 3. Attention Scoring: Reduces the project representation to a scalar score per timestemp
         attn_vector = register_module("attn_vector", torch::nn::Linear(hiddenStateSize, 1));
 
+        //4. Fully Connected Output Layer
         fc = register_module("fc", torch::nn::Linear(hiddenStateSize, outputSize));
 
         this->to(torch::kDouble);
     }
 
     Tensor forward(Tensor X) {
-        // Input: [batch, seq_len=10, features=9]
+        // Step 1: Pass through LSTM
+        // hiddenStates shape: [batch, seq_len, hidden_size]
         auto lstmOutput = lstm->forward(X);
-        auto hiddenStates = std::get<0>(lstmOutput); // [batch, seq_len, hidden]
+        auto hiddenStates = std::get<0>(lstmOutput);
 
-        // Attention: learn which timesteps matter most
-        auto energy = torch::tanh(attn_linear->forward(hiddenStates)); // [batch, seq_len, hidden]
-        auto scores = attn_vector->forward(energy).squeeze(-1);        // [batch, seq_len]
-        auto weights = torch::softmax(scores, /*dim=*/1);              // [batch, seq_len]
+        // Step 2: Calculate "Energy"
+        // Let the model learn complex temporal allignments
+        auto energy = torch::tanh(attn_linear->forward(hiddenStates)); 
 
-        // Context vector: weighted sum of all hidden states
+        // Step 3: Compute raw attention scores
+        // attn_vector reduces hidden dimension to 1 -> [batch, seq_len, 1]
+        // squeeze(-1) removes the trailing dimension -> [batch, seq_len]
+        auto scores = attn_vector->forward(energy).squeeze(-1);
+
+        // Step 4: Normalize scores into probabilities via softmax
+        // Weights will sum to 1.0
+        auto weights = torch::softmax(scores, /*dim=*/1);
+
+        // Step 5: Construct the Context Vector
+        // weights.unsqueeze(1) -> [batch, 1, seq_len]
+        // Batch Matrix Multiplication (bmm) computes the weighted sum: context = sum(weights[t] * hiddenStates[t])
+        // Result shape: [batch, hidden_size]
         auto context = torch::bmm(weights.unsqueeze(1), hiddenStates).squeeze(1); // [batch, hidden]
 
-        // Pass through FC layer
+        // Step 6: Pass through FC layer
         auto out = fc->forward(context);  // [batch, hidden] → [batch, output_size]
         return out;
     }
