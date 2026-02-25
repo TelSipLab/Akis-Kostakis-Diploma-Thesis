@@ -196,19 +196,38 @@ int main(int argc, char* argv[]) {
     std::cout << "Converted eigen matrix to Tensor" << std::endl;
     std::cout << "Tensor shape: " << datasetTensor.sizes() << std::endl;
 
+    // Normalize the data ...
+
+    // 1. Calculate mean and standar deviation
+    Tensor featureMean = datasetTensor.mean(/*dim=*/0, /*keepdim=*/true);
+    Tensor featureStd = datasetTensor.std(/*dim=*/0, /*unbiased=*/true, /*keepdim=*/true);
+
+    // Add a tiny epsilon to std to prevent division by zero in case a column is perfectly constant
+    featureStd = featureStd + 1e-8;
+
+    // 2. Scale the entire dataset: (x - mean) / std
+    Tensor scaledDatasetTensor = (datasetTensor - featureMean) / featureStd;
+    std::cout << "Data standardized successfully." << std::endl;
+
+    Tensor targetMean = featureMean.slice(/*dim=*/1, /*start=*/0, /*end=*/NUM_OUTPUT_FEATURES);
+    Tensor targetStd = featureStd.slice(/*dim=*/1, /*start=*/0, /*end=*/NUM_OUTPUT_FEATURES);
+
+    ////////////////////////
+
+
     // Pre-allocate X and y tensors
     auto options = torch::TensorOptions().dtype(torch::kDouble);
     Tensor X = torch::zeros({trainingSamples, lookbackWindow, NUM_INPUT_FEATURES}, options);
     Tensor y = torch::zeros({trainingSamples, windowSize, NUM_OUTPUT_FEATURES}, options);
 
     // Angles tensor containg the ground truth values
-    Tensor anglesTensor = datasetTensor.slice(1, 0, NUM_OUTPUT_FEATURES);
+    Tensor anglesTensor = scaledDatasetTensor.slice(1, 0, NUM_OUTPUT_FEATURES);
     std::cout << "Angles tensor shape: " << anglesTensor.sizes() << std::endl;
     // [3397, 3]
 
     // Create sequences
     for (int i = 0; i < trainingSamples; i++) {
-        X[i] = datasetTensor.slice(0, i, i + lookbackWindow);
+        X[i] = scaledDatasetTensor.slice(0, i, i + lookbackWindow);
         
         int predStart = i + lookbackWindow;
         y[i] = anglesTensor.slice(0, predStart, predStart + windowSize);
@@ -324,8 +343,12 @@ int main(int argc, char* argv[]) {
     allPredictions = allPredictions.view({trainingSamples, windowSize, NUM_OUTPUT_FEATURES});
     std::cout << "Calculated all predictions size: " <<  allPredictions.sizes() << std::endl;
 
-    // Calculate overall metrics
-    Tensor allDiff = allPredictions - y;
+    // Conver data back since we had normalized them ...
+    Tensor unscaledPredictions = (allPredictions * targetStd) + targetMean;
+    Tensor unscaledTargets = (y * targetStd) + targetMean;
+
+    // Calculate overall metrics using the UNSCALED (real radian) tensors
+    Tensor allDiff = unscaledPredictions - unscaledTargets;
 
     Tensor overallRMSE = allDiff.pow(2).mean().sqrt();
     const double rmseValue = overallRMSE.item<double>();
@@ -344,8 +367,8 @@ int main(int argc, char* argv[]) {
     // Calculate RMSE per step
     std::vector<std::vector<double>> rmsePerStep;
     for (int step = 0; step < windowSize; step++) {
-        Tensor stepPred = allPredictions.select(1, step);
-        Tensor stepTarget = y.select(1, step);
+        Tensor stepPred = unscaledPredictions.select(1, step);
+        Tensor stepTarget = unscaledTargets.select(1, step);
         Tensor rmse = (stepPred - stepTarget).pow(2).mean(0).sqrt();
 
         auto acc = rmse.accessor<double, 1>();
