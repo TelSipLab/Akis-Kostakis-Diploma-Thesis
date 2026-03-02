@@ -11,6 +11,10 @@ else:
 
 df = pd.read_csv('Results/lstm_predictions.csv')
 
+# Filter to validation set only
+df = df[df['set'] == 'val']
+print(f"Using validation set only: {len(df)} rows")
+
 # Convert radians to degrees
 df['roll_pred_deg'] = np.rad2deg(df['roll_pred'])
 df['roll_gt_deg'] = np.rad2deg(df['roll_gt'])

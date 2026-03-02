@@ -233,15 +233,25 @@ int main(int argc, char* argv[]) {
         y[i] = anglesTensor.slice(0, predStart, predStart + windowSize);
     }
 
+    // Train/Validation split (80/20, sequential for time-series)
+    int numTrain = static_cast<int>(trainingSamples * 0.8);
+    int numVal = trainingSamples - numTrain;
+
+    Tensor X_train = X.slice(0, 0, numTrain);
+    Tensor y_train = y.slice(0, 0, numTrain);
+    Tensor X_val = X.slice(0, numTrain, trainingSamples);
+    Tensor y_val = y.slice(0, numTrain, trainingSamples);
+
     std::cout << std::endl;
     std::cout << "Data Shapes" << std::endl;
     std::cout << "X (inputs):  " << X.sizes() << std::endl;
     std::cout << "y (targets): " << y.sizes() << std::endl;
+    std::cout << "Train: " << numTrain << " samples | Val: " << numVal << " samples (80/20 split)" << std::endl;
     std::cout << std::endl;
 
     // Model Creation
     int outputSize = windowSize * NUM_OUTPUT_FEATURES; // Output = how many timesteps to predict * features
-    int hiddenStateSize = 128;
+    int hiddenStateSize = 32;
     auto model = std::make_shared<LSTMNetwork>(NUM_INPUT_FEATURES, hiddenStateSize, outputSize);
 
     std::cout << "Model Created" << std::endl;
@@ -266,9 +276,9 @@ int main(int argc, char* argv[]) {
     std::cout << "Starting Training" << std::endl;
     model->train();  // Set model to training mode
 
-    // Vector holding one index for each sample
-    std::vector<int> indices(trainingSamples);
-    for (int i = 0; i < trainingSamples; i++) {
+    // Vector holding one index for each training sample
+    std::vector<int> indices(numTrain);
+    for (int i = 0; i < numTrain; i++) {
         indices[i] = i;
     }
 
@@ -283,15 +293,15 @@ int main(int argc, char* argv[]) {
         std::shuffle(indices.begin(), indices.end(), rng);
 
         // Training per batch
-        for (int batchStart = 0; batchStart < trainingSamples; batchStart += batchSize) {
-            int currentBatchSize = std::min(batchSize, trainingSamples - batchStart);
+        for (int batchStart = 0; batchStart < numTrain; batchStart += batchSize) {
+            int currentBatchSize = std::min(batchSize, numTrain - batchStart);
 
             // Extract batch using shuffled indices
             std::vector<Tensor> batchXList, batchYList;
             for (int i = 0; i < currentBatchSize; i++) {
                 int idx = indices[batchStart + i];
-                batchXList.push_back(X[idx]);
-                batchYList.push_back(y[idx]);
+                batchXList.push_back(X_train[idx]);
+                batchYList.push_back(y_train[idx]);
             }
 
             Tensor batchX = torch::stack(batchXList);
@@ -313,12 +323,22 @@ int main(int argc, char* argv[]) {
             numBatches++;
         }
 
-        // Print progress
+        // Print progress with validation loss
         if (epoch % 5 == 0 || epoch == numEpochs - 1) {
-            double avgLoss = epochLoss / numBatches;
+            double avgTrainLoss = epochLoss / numBatches;
+
+            // Compute validation loss
+            model->eval();
+            torch::NoGradGuard val_no_grad;
+            Tensor valPred = model->forward(X_val);
+            Tensor valYFlat = y_val.reshape({numVal, -1});
+            double valLoss = criterion(valPred, valYFlat).item<double>();
+            model->train();
+
             std::cout << "Epoch " << std::setw(3) << epoch
-                      << " | Loss: " << std::fixed << std::setprecision(6)
-                      << avgLoss << std::endl;
+                      << " | Train Loss: " << std::fixed << std::setprecision(6)
+                      << avgTrainLoss
+                      << " | Val Loss: " << valLoss << std::endl;
         }
 
         // Save model every 100 epochs
@@ -333,50 +353,47 @@ int main(int argc, char* argv[]) {
     std::cout << "Training Complete" << std::endl;
     std::cout << "Elapsed(s) = " << since<std::chrono::seconds>(start).count() << std::endl;
 
-    // EVALUATION - RMSE PER STEP
-    std::cout << "Evaluating RMSE for each prediction step" << std::endl;
-    model->eval();  // Set model to evaluation mode
+    // EVALUATION
+    model->eval();
     torch::NoGradGuard no_grad;
 
-    // Get predictions for all samples
-    Tensor allPredictions = model->forward(X);
-    allPredictions = allPredictions.view({trainingSamples, windowSize, NUM_OUTPUT_FEATURES});
-    std::cout << "Calculated all predictions size: " <<  allPredictions.sizes() << std::endl;
+    // Helper lambda to compute and print metrics for a given set
+    auto evaluateSet = [&](const Tensor& X_set, const Tensor& y_set, int numSamples, const std::string& setName) {
+        std::cout << "=== " << setName << " Metrics (" << numSamples << " samples) ===" << std::endl;
 
-    // Conver data back since we had normalized them ...
-    Tensor unscaledPredictions = (allPredictions * targetStd) + targetMean;
-    Tensor unscaledTargets = (y * targetStd) + targetMean;
+        Tensor preds = model->forward(X_set);
+        preds = preds.view({numSamples, windowSize, NUM_OUTPUT_FEATURES});
 
-    // Calculate overall metrics using the UNSCALED (real radian) tensors
-    Tensor allDiff = unscaledPredictions - unscaledTargets;
+        // Denormalize back to radians
+        Tensor unscaledPreds = (preds * targetStd) + targetMean;
+        Tensor unscaledTargets = (y_set * targetStd) + targetMean;
 
-    Tensor overallRMSE = allDiff.pow(2).mean().sqrt();
-    const double rmseValue = overallRMSE.item<double>();
-    
-    Tensor overallMAE = allDiff.abs().mean();
-    const double maeValue = overallMAE.item<double>();
+        Tensor diff = unscaledPreds - unscaledTargets;
 
-    // RMSE per angle (across ALL samples and ALL steps) - for EKF comparison
-    std::vector<int64_t> dims = {0, 1};  // Average over samples and steps
-    Tensor rmsePerAngleTensor = allDiff.pow(2).mean(dims).sqrt();
-    auto rmse_acc = rmsePerAngleTensor.accessor<double, 1>();
+        double rmseValue = diff.pow(2).mean().sqrt().item<double>();
+        double maeValue = diff.abs().mean().item<double>();
 
-    // Extract RMSE per angle into vector
-    std::vector<double> rmsePerAngle = {rmse_acc[0], rmse_acc[1], rmse_acc[2]};
+        // RMSE per angle
+        std::vector<int64_t> dims = {0, 1};
+        Tensor rmsePerAngleTensor = diff.pow(2).mean(dims).sqrt();
+        auto rmse_acc = rmsePerAngleTensor.accessor<double, 1>();
+        std::vector<double> rmsePerAngle = {rmse_acc[0], rmse_acc[1], rmse_acc[2]};
 
-    // Calculate RMSE per step
-    std::vector<std::vector<double>> rmsePerStep;
-    for (int step = 0; step < windowSize; step++) {
-        Tensor stepPred = unscaledPredictions.select(1, step);
-        Tensor stepTarget = unscaledTargets.select(1, step);
-        Tensor rmse = (stepPred - stepTarget).pow(2).mean(0).sqrt();
+        // RMSE per step
+        std::vector<std::vector<double>> rmsePerStep;
+        for (int step = 0; step < windowSize; step++) {
+            Tensor stepPred = unscaledPreds.select(1, step);
+            Tensor stepTarget = unscaledTargets.select(1, step);
+            Tensor rmse = (stepPred - stepTarget).pow(2).mean(0).sqrt();
+            auto acc = rmse.accessor<double, 1>();
+            rmsePerStep.push_back({acc[0], acc[1], acc[2]});
+        }
 
-        auto acc = rmse.accessor<double, 1>();
-        rmsePerStep.push_back({acc[0], acc[1], acc[2]});
-    }
+        printMetrics(rmseValue, maeValue, rmsePerAngle, rmsePerStep, windowSize);
+    };
 
-    // Print all metrics
-    printMetrics(rmseValue, maeValue, rmsePerAngle, rmsePerStep, windowSize);
+    evaluateSet(X_train, y_train, numTrain, "Training");
+    evaluateSet(X_val, y_val, numVal, "Validation");
     
     return 0;
 }

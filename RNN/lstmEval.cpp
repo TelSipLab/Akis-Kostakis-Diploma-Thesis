@@ -171,7 +171,11 @@ int main(int argc, char* argv[]) {
     Tensor targetMean = featureMean.slice(/*dim=*/1, /*start=*/0, /*end=*/NUM_OUTPUT_FEATURES);
     Tensor targetStd = featureStd.slice(/*dim=*/1, /*start=*/0, /*end=*/NUM_OUTPUT_FEATURES);
 
+    // Train/Val split (must match training!)
+    int numTrain = static_cast<int>(trainingSamples * 0.8);
+
     std::cout << "Data normalized (z-score standardization)" << std::endl;
+    std::cout << "Train/Val split: " << numTrain << " train | " << (trainingSamples - numTrain) << " val" << std::endl;
     std::cout << std::endl;
 
     // Handle --save-all mode
@@ -190,7 +194,7 @@ int main(int argc, char* argv[]) {
         }
 
         // Write header
-        outFile << "timestep,step_ahead,roll_pred,pitch_pred,yaw_pred,roll_gt,pitch_gt,yaw_gt" << std::endl;
+        outFile << "timestep,step_ahead,roll_pred,pitch_pred,yaw_pred,roll_gt,pitch_gt,yaw_gt,set" << std::endl;
 
         // Process all samples
         for (int sample = 0; sample < trainingSamples; sample++) {
@@ -225,9 +229,11 @@ int main(int argc, char* argv[]) {
                 double yaw_gt = dataset(absoluteTimestep, 2);
 
                 // Write to CSV
+                std::string setLabel = (sample < numTrain) ? "train" : "val";
                 outFile << absoluteTimestep << "," << stepAhead << ","
                        << roll_pred << "," << pitch_pred << "," << yaw_pred << ","
-                       << roll_gt << "," << pitch_gt << "," << yaw_gt << std::endl;
+                       << roll_gt << "," << pitch_gt << "," << yaw_gt << ","
+                       << setLabel << std::endl;
             }
 
             // Progress indicator
