@@ -35,7 +35,8 @@ if len(matching_index) == 0:
     sys.exit(1)
 
 start_idx = matching_index[0]  # first matching row
-df_selection = df.iloc[start_idx:start_idx + 10].copy()
+start_pos = df.index.get_loc(start_idx)  # convert to positional index
+df_selection = df.iloc[start_pos:start_pos + 10].copy()
 
 # Create actual timestep values for x-axis
 df_selection['actual_timestep'] = timestamp_draw + df_selection['step_ahead'] - 1
