@@ -1,3 +1,4 @@
+#include "Utils.hpp"
 #include "csvreader.hpp"
 
 #include <exception>
@@ -44,6 +45,25 @@ public:
         return out;
     }
 
+    static Tensor eigenToTensor(const Eigen::MatrixXd& matrixToConvert) {
+        int rows = matrixToConvert.rows();
+        int cols = matrixToConvert.cols();
+
+        auto options = torch::TensorOptions().dtype(torch::kDouble);
+        auto tensor = torch::zeros({rows, cols}, options);
+
+        for (int i = 0; i < rows; i++) {
+            std::vector<double> rowData(cols);
+            for (int j = 0; j < cols; j++) {
+                rowData[j] = matrixToConvert(i, j);
+            }
+
+            auto rowTensor = torch::from_blob(rowData.data(), {cols}, options).clone();
+            tensor[i] = rowTensor;
+        }
+        return tensor;
+    }
+
 private:
     torch::nn::LSTM lstm{nullptr};
     torch::nn::Linear attn_linear{nullptr};
@@ -75,7 +95,22 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
-    modelPath = argv[1];
+    // Check if first argument is a help flag
+    std::string firstArg = argv[1];
+    if (firstArg == "--help" || firstArg == "-h") {
+        std::cout << "Usage: ./lstmEval.out <model_path> [options]" << std::endl;
+        std::cout << "Options:" << std::endl;
+        std::cout << "  [sample_index]       Evaluate single sample (e.g., 0, 1000)" << std::endl;
+        std::cout << "  --save-all, -a       Generate predictions for ALL samples and save to CSV" << std::endl;
+        std::cout << "  --help, -h           Show this help message" << std::endl;
+        std::cout << std::endl;
+        std::cout << "Examples:" << std::endl;
+        std::cout << "  ./lstmEval.out lstm_model_epoch_1000.pt 0" << std::endl;
+        std::cout << "  ./lstmEval.out lstm_model_epoch_1000.pt --save-all" << std::endl;
+        return 0;
+    }
+
+    modelPath = firstArg;
 
     for (int i = 2; i < argc; i++) {
         std::string arg = argv[i];
@@ -83,16 +118,6 @@ int main(int argc, char* argv[]) {
             saveAll = true;
         } else if(i == 2 && isNumber(arg)) {
             sampleIndex = std::stoi(arg);
-        } else if (arg == "--help" || arg == "-h") {
-            std::cout << "Usage: ./lstmEval.out <model_path> [options]" << std::endl;
-            std::cout << "Options:" << std::endl;
-            std::cout << "  [sample_index]       Evaluate single sample (e.g., 0, 1000)" << std::endl;
-            std::cout << "  --save-all, -a       Generate predictions for ALL samples and save to CSV" << std::endl;
-            std::cout << std::endl;
-            std::cout << "Examples:" << std::endl;
-            std::cout << "  ./lstmEval.out lstm_model_epoch_300.pt 0" << std::endl;
-            std::cout << "  ./lstmEval.out lstm_model_epoch_300.pt --save-all" << std::endl;
-            return 0;
         } else {
             std::cout << "Wrong argument use -h to view help" << std::endl;
         }
@@ -134,6 +159,19 @@ int main(int argc, char* argv[]) {
     int totalSamples = dataset.rows();
     int trainingSamples = totalSamples - windowSize - lookbackWindow + 1;
 
+    // Convert to tensor and normalize (must match training!)
+    Tensor datasetTensor = LSTMNetwork::eigenToTensor(dataset);
+
+    Tensor featureMean = datasetTensor.mean(/*dim=*/0, /*keepdim=*/true);
+    Tensor featureStd = datasetTensor.std(/*dim=*/0, /*unbiased=*/true, /*keepdim=*/true);
+    featureStd = featureStd + 1e-8;
+
+    Tensor scaledDatasetTensor = (datasetTensor - featureMean) / featureStd;
+
+    Tensor targetMean = featureMean.slice(/*dim=*/1, /*start=*/0, /*end=*/NUM_OUTPUT_FEATURES);
+    Tensor targetStd = featureStd.slice(/*dim=*/1, /*start=*/0, /*end=*/NUM_OUTPUT_FEATURES);
+
+    std::cout << "Data normalized (z-score standardization)" << std::endl;
     std::cout << std::endl;
 
     // Handle --save-all mode
@@ -156,33 +194,32 @@ int main(int argc, char* argv[]) {
 
         // Process all samples
         for (int sample = 0; sample < trainingSamples; sample++) {
-            // Prepare input
-            Tensor input = torch::zeros({1, lookbackWindow, NUM_INPUT_FEATURES}, options);
-            for (int t = 0; t < lookbackWindow; t++) {
-                for (int j = 0; j < NUM_INPUT_FEATURES; j++) {
-                    input[0][t][j] = dataset(sample + t, j);
-                }
-            }
+            // Prepare normalized input
+            Tensor input = scaledDatasetTensor.slice(0, sample, sample + lookbackWindow).unsqueeze(0);
 
-            // Get prediction
+            // Get prediction (in normalized space)
             Tensor output = model->forward(input);
-            Tensor prediction = output.view({windowSize, NUM_OUTPUT_FEATURES});
+            Tensor prediction = output.view({1, windowSize, NUM_OUTPUT_FEATURES});
+
+            // Denormalize predictions back to radians
+            Tensor unscaledPred = (prediction * targetStd) + targetMean;
+            unscaledPred = unscaledPred.squeeze(0); // [windowSize, 3]
 
             // Get ground truth
             int predStart = sample + lookbackWindow;
 
-            // Write predictions for each of the 5 timesteps
+            // Write predictions for each step
             for (int step = 0; step < windowSize; step++) {
                 int absoluteTimestep = predStart + step;
                 int stepAhead = step + 1;
-                
-                // Get predicted angles
-                auto pred = prediction[step];
+
+                // Get predicted angles (denormalized)
+                auto pred = unscaledPred[step];
                 double roll_pred = pred[0].item<double>();
                 double pitch_pred = pred[1].item<double>();
                 double yaw_pred = pred[2].item<double>();
 
-                // Get ground truth angles
+                // Get ground truth angles (original dataset)
                 double roll_gt = dataset(absoluteTimestep, 0);
                 double pitch_gt = dataset(absoluteTimestep, 1);
                 double yaw_gt = dataset(absoluteTimestep, 2);
@@ -211,23 +248,16 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // Prepare sequence input (lookback window)
+    // Prepare normalized input (lookback window)
+    Tensor input = scaledDatasetTensor.slice(0, sampleIndex, sampleIndex + lookbackWindow).unsqueeze(0);
+
+    // Ground truth for next N timesteps (after lookback window, original scale)
     auto options = torch::TensorOptions().dtype(torch::kDouble);
-    Tensor input = torch::zeros({1, lookbackWindow, NUM_INPUT_FEATURES}, options);
-
-    // Fill input with lookback window data
-    for (int t = 0; t < lookbackWindow; t++) {
-        for (int j = 0; j < NUM_INPUT_FEATURES; j++) {
-            input[0][t][j] = dataset(sampleIndex + t, j);
-        }
-    }
-
-    // Ground truth for next 5 timesteps (after lookback window)
     Tensor groundTruth = torch::zeros({windowSize, NUM_OUTPUT_FEATURES}, options);
     int predStart = sampleIndex + lookbackWindow;
     for (int t = 0; t < windowSize; t++) {
         for (int j = 0; j < NUM_OUTPUT_FEATURES; j++) {
-            groundTruth[t][j] = dataset(predStart + t, j);  // Next 5 timesteps after lookback, first 3 columns
+            groundTruth[t][j] = dataset(predStart + t, j);
         }
     }
 
@@ -235,31 +265,34 @@ int main(int argc, char* argv[]) {
     model->eval();
     torch::NoGradGuard no_grad;
 
-    Tensor output = model->forward(input);  // [1, 15]
-    Tensor prediction = output.view({windowSize, NUM_OUTPUT_FEATURES});  // [5, 3]
+    Tensor output = model->forward(input);  // [1, N*3]
+    Tensor prediction = output.view({1, windowSize, NUM_OUTPUT_FEATURES});
+
+    // Denormalize predictions back to radians
+    Tensor unscaledPred = ((prediction * targetStd) + targetMean).squeeze(0); // [N, 3]
 
     // Display results
     std::cout << "=== Input (timesteps " << sampleIndex << " to " << sampleIndex + lookbackWindow - 1 << ") ===" << std::endl;
     std::cout << "Shape: [1, " << lookbackWindow << ", " << NUM_INPUT_FEATURES << "]" << std::endl;
-    std::cout << input << std::endl;
+    std::cout << "(normalized)" << std::endl;
     std::cout << std::endl;
 
-    std::cout << "=== Prediction (next 5 timesteps) ===" << std::endl;
-    std::cout << "Shape: [5, 3] (roll, pitch, yaw)" << std::endl;
-    std::cout << prediction << std::endl;
+    std::cout << "=== Prediction (next " << windowSize << " timesteps) ===" << std::endl;
+    std::cout << "Shape: [" << windowSize << ", 3] (roll, pitch, yaw) in radians" << std::endl;
+    std::cout << unscaledPred << std::endl;
     std::cout << std::endl;
 
-    std::cout << "=== Ground Truth (next 5 timesteps) ===" << std::endl;
+    std::cout << "=== Ground Truth (next " << windowSize << " timesteps) ===" << std::endl;
     std::cout << groundTruth << std::endl;
     std::cout << std::endl;
 
-    // Calculate error
-    Tensor error = prediction - groundTruth;
+    // Calculate error on original scale
+    Tensor error = unscaledPred - groundTruth;
     Tensor rmse = error.pow(2).mean().sqrt();
     std::cout << "=== Error Metrics ===" << std::endl;
     std::cout << "RMSE: " << std::fixed << std::setprecision(6)
               << rmse.item<double>() << " rad = "
-              << std::setprecision(3) << rmse.item<double>() * 180.0 / M_PI << " degrees" << std::endl;
+              << std::setprecision(3) << Utils::convertToDeg(rmse.item<double>()) << " degrees" << std::endl;
 
     return 0;
 }
