@@ -1,0 +1,91 @@
+LSTM Multi-Step Ahead Prediction
+Configuration:
+  Lookback window (K): 10 timesteps
+  Prediction horizon (N): 10 timesteps
+  Input features: 9
+  Output features: 3
+  Epochs: 1000
+  Random seed: 42
+
+Data/dataset_1.csv rows: 3397 Cols: 9 (3397x9)
+Number of training samples: 3378 after removing windowSize and loopback
+Converted eigen matrix to Tensor
+Tensor shape: [3397, 9]
+Data standardized successfully.
+Angles tensor shape: [3397, 3]
+
+Data Shapes
+X (inputs):  [3378, 10, 9]
+y (targets): [3378, 10, 3]
+Train: 2702 samples | Val: 676 samples (80/20 split)
+
+Model Created
+Architecture: Input(9) -> LSTM(32) -> Attention -> FC(30)
+
+Training Configuration
+Batch size: 32
+Epochs: 1000
+Learning rate: 0.001
+Optimizer: Adam
+Loss function: torch::nn::MSELossImpl
+
+Starting Training
+Epoch   0 | Train Loss: 0.782989 | Val Loss: 0.269183
+Epoch   5 | Train Loss: 0.057763 | Val Loss: 0.070655
+Epoch  10 | Train Loss: 0.035523 | Val Loss: 0.067618
+Epoch  15 | Train Loss: 0.028490 | Val Loss: 0.069208
+Epoch  20 | Train Loss: 0.024719 | Val Loss: 0.068546
+Epoch  25 | Train Loss: 0.022055 | Val Loss: 0.066253
+Epoch  30 | Train Loss: 0.019997 | Val Loss: 0.074073
+Epoch  35 | Train Loss: 0.018436 | Val Loss: 0.081827
+Epoch  40 | Train Loss: 0.016972 | Val Loss: 0.086485
+Epoch  45 | Train Loss: 0.016163 | Val Loss: 0.095521
+Epoch  50 | Train Loss: 0.015077 | Val Loss: 0.092377
+Epoch  55 | Train Loss: 0.014651 | Val Loss: 0.092756
+Epoch  60 | Train Loss: 0.013761 | Val Loss: 0.087194
+Epoch  65 | Train Loss: 0.013380 | Val Loss: 0.089936
+Epoch  70 | Train Loss: 0.012806 | Val Loss: 0.084024
+Epoch  75 | Train Loss: 0.012318 | Val Loss: 0.087936
+Epoch  80 | Train Loss: 0.012068 | Val Loss: 0.089610
+Epoch  85 | Train Loss: 0.011491 | Val Loss: 0.088158
+Epoch  90 | Train Loss: 0.011224 | Val Loss: 0.083886
+Epoch  95 | Train Loss: 0.011026 | Val Loss: 0.092493
+  -- Saved model: lstm_model_epoch_100.pt
+Epoch 100 | Train Loss: 0.010670 | Val Loss: 0.094304
+Epoch 105 | Train Loss: 0.010211 | Val Loss: 0.098763
+Epoch 110 | Train Loss: 0.010171 | Val Loss: 0.099412
+Epoch 115 | Train Loss: 0.009704 | Val Loss: 0.106633
+Epoch 120 | Train Loss: 0.009642 | Val Loss: 0.094160
+Epoch 125 | Train Loss: 0.009411 | Val Loss: 0.093343
+Epoch 130 | Train Loss: 0.009148 | Val Loss: 0.102343
+Epoch 135 | Train Loss: 0.008871 | Val Loss: 0.097097
+Epoch 140 | Train Loss: 0.008834 | Val Loss: 0.098485
+Epoch 145 | Train Loss: 0.008516 | Val Loss: 0.090855
+Epoch 150 | Train Loss: 0.008753 | Val Loss: 0.092217
+Epoch 155 | Train Loss: 0.008384 | Val Loss: 0.102904
+Epoch 160 | Train Loss: 0.008358 | Val Loss: 0.095215
+Epoch 165 | Train Loss: 0.007982 | Val Loss: 0.101210
+Epoch 170 | Train Loss: 0.007916 | Val Loss: 0.098406
+Epoch 175 | Train Loss: 0.007617 | Val Loss: 0.107385
+Epoch 180 | Train Loss: 0.007722 | Val Loss: 0.098756
+Epoch 185 | Train Loss: 0.007569 | Val Loss: 0.096986
+Epoch 190 | Train Loss: 0.007282 | Val Loss: 0.106195
+Epoch 195 | Train Loss: 0.007133 | Val Loss: 0.105904
+  -- Saved model: lstm_model_epoch_200.pt
+Epoch 200 | Train Loss: 0.007185 | Val Loss: 0.103229
+Epoch 205 | Train Loss: 0.007054 | Val Loss: 0.101807
+Epoch 210 | Train Loss: 0.006778 | Val Loss: 0.103974
+Epoch 215 | Train Loss: 0.006848 | Val Loss: 0.108459
+Epoch 220 | Train Loss: 0.006638 | Val Loss: 0.104081
+Epoch 225 | Train Loss: 0.006619 | Val Loss: 0.110769
+Epoch 230 | Train Loss: 0.006516 | Val Loss: 0.100192
+Epoch 235 | Train Loss: 0.006652 | Val Loss: 0.103730
+Epoch 240 | Train Loss: 0.006359 | Val Loss: 0.105470
+Epoch 245 | Train Loss: 0.006230 | Val Loss: 0.102117
+Epoch 250 | Train Loss: 0.006323 | Val Loss: 0.102419
+Epoch 255 | Train Loss: 0.006096 | Val Loss: 0.107783
+Epoch 260 | Train Loss: 0.006172 | Val Loss: 0.102899
+Epoch 265 | Train Loss: 0.006006 | Val Loss: 0.101620
+Epoch 270 | Train Loss: 0.005855 | Val Loss: 0.107167
+Epoch 275 | Train Loss: 0.006129 | Val Loss: 0.109543
+Epoch 280 | Train Loss: 0.005816 | Val Loss: 0.111320
