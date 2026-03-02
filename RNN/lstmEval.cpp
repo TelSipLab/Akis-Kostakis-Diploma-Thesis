@@ -14,7 +14,7 @@ using torch::Tensor;
 // Copy of LSTMNetwork class (must match training!)
 class LSTMNetwork: public torch::nn::Module {
 public:
-    LSTMNetwork(int inputSize, int hiddenStateSize, int outputSize) {
+    LSTMNetwork(int inputSize, int hiddenStateSize, int outputSize, double dropoutRate = 0.2) {
         lstm = register_module("lstm", torch::nn::LSTM(
             torch::nn::LSTMOptions(inputSize, hiddenStateSize).batch_first(true)
         ));
@@ -23,25 +23,27 @@ public:
         attn_linear = register_module("attn_linear", torch::nn::Linear(hiddenStateSize, hiddenStateSize));
         attn_vector = register_module("attn_vector", torch::nn::Linear(hiddenStateSize, 1));
 
+        // Dropout (inactive during eval)
+        dropout = register_module("dropout", torch::nn::Dropout(dropoutRate));
+
         fc = register_module("fc", torch::nn::Linear(hiddenStateSize, outputSize));
         this->to(torch::kDouble);
     }
 
     Tensor forward(Tensor X) {
-        // Input: [batch, seq_len=10, features=9]
         auto lstmOutput = lstm->forward(X);
-        auto hiddenStates = std::get<0>(lstmOutput); // [batch, seq_len, hidden]
+        auto hiddenStates = std::get<0>(lstmOutput);
 
-        // Attention: learn which timesteps matter most
-        auto energy = torch::tanh(attn_linear->forward(hiddenStates)); // [batch, seq_len, hidden]
-        auto scores = attn_vector->forward(energy).squeeze(-1);        // [batch, seq_len]
-        auto weights = torch::softmax(scores, /*dim=*/1);              // [batch, seq_len]
+        hiddenStates = dropout->forward(hiddenStates);
 
-        // Context vector: weighted sum of all hidden states
-        auto context = torch::bmm(weights.unsqueeze(1), hiddenStates).squeeze(1); // [batch, hidden]
+        auto energy = torch::tanh(attn_linear->forward(hiddenStates));
+        auto scores = attn_vector->forward(energy).squeeze(-1);
+        auto weights = torch::softmax(scores, /*dim=*/1);
 
-        // Pass through FC layer
-        auto out = fc->forward(context);  // [batch, output_size]
+        auto context = torch::bmm(weights.unsqueeze(1), hiddenStates).squeeze(1);
+        context = dropout->forward(context);
+
+        auto out = fc->forward(context);
         return out;
     }
 
@@ -68,6 +70,7 @@ private:
     torch::nn::LSTM lstm{nullptr};
     torch::nn::Linear attn_linear{nullptr};
     torch::nn::Linear attn_vector{nullptr};
+    torch::nn::Dropout dropout{nullptr};
     torch::nn::Linear fc{nullptr};
 };
 
@@ -128,6 +131,7 @@ int main(int argc, char* argv[]) {
     const int NUM_INPUT_FEATURES = 9;
     const int NUM_OUTPUT_FEATURES = 3;
     const int outputSize = windowSize * NUM_OUTPUT_FEATURES;
+    const int hiddenStateSize = 32;
 
     std::cout << "LSTM Model Evaluation" << std::endl;
     std::cout << "Model: " << modelPath << std::endl;
@@ -141,7 +145,7 @@ int main(int argc, char* argv[]) {
 
     // Load model
     std::cout << "Loading model..." << std::endl;
-    auto model = std::make_shared<LSTMNetwork>(NUM_INPUT_FEATURES, 128, outputSize);
+    auto model = std::make_shared<LSTMNetwork>(NUM_INPUT_FEATURES, hiddenStateSize, outputSize);
 
     try {
         torch::load(model, modelPath);

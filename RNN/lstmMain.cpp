@@ -65,20 +65,23 @@ void printMetrics(double rmseValue, double maeValue,
 // TODO Move out of here if network get's too complex
 class LSTMNetwork: public torch::nn::Module {
 public:
-    LSTMNetwork(int inputSize, int hiddenStateSize, int outputSize) {
+    LSTMNetwork(int inputSize, int hiddenStateSize, int outputSize, double dropoutRate = 0.2) {
         // 1. Standard LSTM layer
         lstm = register_module("lstm", torch::nn::LSTM(
             torch::nn::LSTMOptions(inputSize, hiddenStateSize).batch_first(true)
         ));
-    
+
 
         //2. Attention Projection: Learns a non-linear representation of the higgen states
         attn_linear = register_module("attn_linear", torch::nn::Linear(hiddenStateSize, hiddenStateSize));
-        
+
         // 3. Attention Scoring: Reduces the project representation to a scalar score per timestemp
         attn_vector = register_module("attn_vector", torch::nn::Linear(hiddenStateSize, 1));
 
-        //4. Fully Connected Output Layer
+        // 4. Dropout for regularization (active only during training)
+        dropout = register_module("dropout", torch::nn::Dropout(dropoutRate));
+
+        // 5. Fully Connected Output Layer
         fc = register_module("fc", torch::nn::Linear(hiddenStateSize, outputSize));
 
         this->to(torch::kDouble);
@@ -90,26 +93,32 @@ public:
         auto lstmOutput = lstm->forward(X);
         auto hiddenStates = std::get<0>(lstmOutput);
 
-        // Step 2: Calculate "Energy"
-        // Let the model learn complex temporal allignments
-        auto energy = torch::tanh(attn_linear->forward(hiddenStates)); 
+        // Step 2: Apply dropout on LSTM hidden states
+        hiddenStates = dropout->forward(hiddenStates);
 
-        // Step 3: Compute raw attention scores
+        // Step 3: Calculate "Energy"
+        // Let the model learn complex temporal allignments
+        auto energy = torch::tanh(attn_linear->forward(hiddenStates));
+
+        // Step 4: Compute raw attention scores
         // attn_vector reduces hidden dimension to 1 -> [batch, seq_len, 1]
         // squeeze(-1) removes the trailing dimension -> [batch, seq_len]
         auto scores = attn_vector->forward(energy).squeeze(-1);
 
-        // Step 4: Normalize scores into probabilities via softmax
+        // Step 5: Normalize scores into probabilities via softmax
         // Weights will sum to 1.0
         auto weights = torch::softmax(scores, /*dim=*/1);
 
-        // Step 5: Construct the Context Vector
+        // Step 6: Construct the Context Vector
         // weights.unsqueeze(1) -> [batch, 1, seq_len]
         // Batch Matrix Multiplication (bmm) computes the weighted sum: context = sum(weights[t] * hiddenStates[t])
         // Result shape: [batch, hidden_size]
         auto context = torch::bmm(weights.unsqueeze(1), hiddenStates).squeeze(1); // [batch, hidden]
 
-        // Step 6: Pass through FC layer
+        // Step 7: Apply dropout before FC layer
+        context = dropout->forward(context);
+
+        // Step 8: Pass through FC layer
         auto out = fc->forward(context);  // [batch, hidden] → [batch, output_size]
         return out;
     }
@@ -137,6 +146,7 @@ private:
     torch::nn::LSTM lstm{nullptr};
     torch::nn::Linear attn_linear{nullptr};
     torch::nn::Linear attn_vector{nullptr};
+    torch::nn::Dropout dropout{nullptr};
     torch::nn::Linear fc{nullptr};
 };
 
@@ -170,6 +180,7 @@ int main(int argc, char* argv[]) {
     const int windowSize = 10;           // Predict next 10 timesteps
     const int NUM_INPUT_FEATURES = 9;   // 9 columns in dataset_1.csv
     const int NUM_OUTPUT_FEATURES = 3;  // Predict 3 angles (roll, pitch, yaw)
+    const int hiddenStateSize = 32;
 
     std::cout << "LSTM Multi-Step Ahead Prediction" << std::endl;
     std::cout << "Configuration:" << std::endl;
@@ -251,7 +262,6 @@ int main(int argc, char* argv[]) {
 
     // Model Creation
     int outputSize = windowSize * NUM_OUTPUT_FEATURES; // Output = how many timesteps to predict * features
-    int hiddenStateSize = 32;
     auto model = std::make_shared<LSTMNetwork>(NUM_INPUT_FEATURES, hiddenStateSize, outputSize);
 
     std::cout << "Model Created" << std::endl;
