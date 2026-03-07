@@ -4,80 +4,76 @@ import numpy as np
 import sys
 
 if len(sys.argv) == 2:
-    timestamp_draw = int(sys.argv[1])
+    sample_index = int(sys.argv[1])
 else:
-    print(f"Wrong usage")
+    print("Usage: python3 plot_single_pred.py <sample_index>")
+    print("  sample_index: index into the test set (0 = first test sample)")
     sys.exit(1)
 
+# Read the predictions CSV
 df = pd.read_csv('Results/lstm_predictions.csv')
 
-# Filter to validation set only
-df = df[df['set'] == 'val']
-print(f"Using validation set only: {len(df)} rows")
+# Filter to test set only
+df = df[df['set'] == 'test'].reset_index(drop=True)
+print(f"Test set: {len(df)} rows ({len(df) // 10} samples)")
 
 # Convert radians to degrees
-df['roll_pred_deg'] = np.rad2deg(df['roll_pred'])
-df['roll_gt_deg'] = np.rad2deg(df['roll_gt'])
-df['pitch_pred_deg'] = np.rad2deg(df['pitch_pred'])
-df['pitch_gt_deg'] = np.rad2deg(df['pitch_gt'])
-df['yaw_pred_deg'] = np.rad2deg(df['yaw_pred'])
-df['yaw_gt_deg'] = np.rad2deg(df['yaw_gt'])
+for col in ['roll_pred', 'roll_gt', 'pitch_pred', 'pitch_gt', 'yaw_pred', 'yaw_gt']:
+    df[col + '_deg'] = np.rad2deg(df[col])
 
-
-print(f"Total rows in dataset: {len(df)}")
-
-
-# Find the index of the first row matching both conditions
-matching_index = df[(df['timestep'] == timestamp_draw) & (df['step_ahead'] == 1)].index
-
-if len(matching_index) == 0:
-    print("No row found with the given timestep and step_ahead == 1")
+# Each sample has 10 rows (step_ahead 1-10)
+start_pos = sample_index * 10
+if start_pos + 10 > len(df):
+    print(f"Sample index too large! Max: {len(df) // 10 - 1}")
     sys.exit(1)
 
-start_idx = matching_index[0]  # first matching row
-start_pos = df.index.get_loc(start_idx)  # convert to positional index
 df_selection = df.iloc[start_pos:start_pos + 10].copy()
+x_axis = df_selection['step_ahead'].values
 
-# Create actual timestep values for x-axis
-df_selection['actual_timestep'] = timestamp_draw + df_selection['step_ahead'] - 1
+# Compute RMSE for this sample
+roll_rmse = np.sqrt(np.mean((df_selection['roll_pred_deg'] - df_selection['roll_gt_deg'])**2))
+pitch_rmse = np.sqrt(np.mean((df_selection['pitch_pred_deg'] - df_selection['pitch_gt_deg'])**2))
+yaw_rmse = np.sqrt(np.mean((df_selection['yaw_pred_deg'] - df_selection['yaw_gt_deg'])**2))
 
-print(df_selection)
+print(f"Sample {sample_index} | Roll RMSE: {roll_rmse:.3f} | Pitch RMSE: {pitch_rmse:.3f} | Yaw RMSE: {yaw_rmse:.3f}")
 
+# Create 3-row subplot (matching EKF style)
+fig, axes = plt.subplots(3, 1, figsize=(12, 10), sharex=True)
 
+for ax in axes:
+    ax.tick_params(axis='both', labelsize=14)
 
-# Plot roll, pitch, yaw predictions vs ground truth
-fig, axes = plt.subplots(3, 1, figsize=(10, 8), sharex=True)
+angles = [
+    ('Roll',  'roll_pred_deg',  'roll_gt_deg',  roll_rmse),
+    ('Pitch', 'pitch_pred_deg', 'pitch_gt_deg', pitch_rmse),
+    ('Yaw',   'yaw_pred_deg',   'yaw_gt_deg',   yaw_rmse),
+]
 
-# Add overall title
-fig.suptitle(f'All Predictions from Sample at Timestep {timestamp_draw}', fontsize=14, fontweight='bold')
+for i, (name, pred_col, gt_col, rmse) in enumerate(angles):
+    axes[i].plot(x_axis, df_selection[pred_col].values,
+                 label='LSTM Prediction', linestyle='-', linewidth=2, marker='x',
+                 markersize=8, color='#ff7f0e')
+    axes[i].plot(x_axis, df_selection[gt_col].values,
+                 label='Ground Truth', linestyle='--', linewidth=2, marker='o',
+                 markersize=6, color='#1f77b4')
+    axes[i].set_ylabel(f'{name} Angle (degrees)', fontsize=14)
+    axes[i].legend(loc='upper right', fontsize=14)
+    axes[i].grid(True, alpha=0.3)
 
-# Roll
-axes[0].plot(df_selection['actual_timestep'], df_selection['roll_gt_deg'], label='Roll GT', marker='o', linewidth=2)
-axes[0].plot(df_selection['actual_timestep'], df_selection['roll_pred_deg'], label='Roll Pred', marker='x', linewidth=2)
-axes[0].set_ylabel('Roll (deg)')
-axes[0].legend()
-axes[0].grid(True, alpha=0.3)
+    # RMSE text box
+    axes[i].text(0.02, 0.95, f'{name} RMSE: {rmse:.3f} deg',
+                 transform=axes[i].transAxes, fontsize=13,
+                 verticalalignment='top',
+                 bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
 
-# Pitch
-axes[1].plot(df_selection['actual_timestep'], df_selection['pitch_gt_deg'], label='Pitch GT', marker='o', linewidth=2)
-axes[1].plot(df_selection['actual_timestep'], df_selection['pitch_pred_deg'], label='Pitch Pred', marker='x', linewidth=2)
-axes[1].set_ylabel('Pitch (deg)')
-axes[1].legend()
-axes[1].grid(True, alpha=0.3)
-
-# Yaw
-axes[2].plot(df_selection['actual_timestep'], df_selection['yaw_gt_deg'], label='Yaw GT', marker='o', linewidth=2)
-axes[2].plot(df_selection['actual_timestep'], df_selection['yaw_pred_deg'], label='Yaw Pred', marker='x', linewidth=2)
-axes[2].set_ylabel('Yaw (deg)')
-axes[2].set_xlabel('Timestep')
-axes[2].legend()
-axes[2].grid(True, alpha=0.3)
+axes[0].set_title(f'LSTM 10-Step Ahead Prediction - Test Sample {sample_index}', fontsize=14, fontweight='bold')
+axes[2].set_xlabel('Step Ahead', fontsize=16)
+axes[2].set_xticks(range(1, 11))
 
 plt.tight_layout()
 
-# Save plot
-filename = f'Results/LSTM/single_sample_prediction_{timestamp_draw}.png'
-plt.savefig(filename, dpi=300, bbox_inches='tight')
+filename = f'Results/LSTM/single_sample_prediction_test_{sample_index}.png'
+plt.savefig(filename, dpi=150, bbox_inches='tight')
 print(f"\nSaved plot to {filename}")
 
 plt.show()

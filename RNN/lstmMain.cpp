@@ -180,7 +180,7 @@ int main(int argc, char* argv[]) {
     const int windowSize = 10;           // Predict next 10 timesteps
     const int NUM_INPUT_FEATURES = 9;   // 9 columns in dataset_1.csv
     const int NUM_OUTPUT_FEATURES = 3;  // Predict 3 angles (roll, pitch, yaw)
-    const int hiddenStateSize = 32;
+    const int hiddenStateSize = 128;
 
     std::cout << "LSTM Multi-Step Ahead Prediction" << std::endl;
     std::cout << "Configuration:" << std::endl;
@@ -192,7 +192,7 @@ int main(int argc, char* argv[]) {
     std::cout << "  Random seed: " << randomSeed << std::endl;
     std::cout << std::endl;
 
-    CsvReader datasetReader("Data/dataset_1.csv");
+    CsvReader datasetReader("Data/Quadcopter_Datasets/all_combined_reordered.csv");
     datasetReader.read();
     datasetReader.printStats();
 
@@ -244,20 +244,39 @@ int main(int argc, char* argv[]) {
         y[i] = anglesTensor.slice(0, predStart, predStart + windowSize);
     }
 
-    // Train/Validation split (80/20, sequential for time-series)
-    int numTrain = static_cast<int>(trainingSamples * 0.8);
-    int numVal = trainingSamples - numTrain;
+    // Shuffle all windows before splitting (mix data from all flights)
+    std::vector<int> shuffleIndices(trainingSamples);
+    for (int i = 0; i < trainingSamples; i++) shuffleIndices[i] = i;
 
-    Tensor X_train = X.slice(0, 0, numTrain);
-    Tensor y_train = y.slice(0, 0, numTrain);
-    Tensor X_val = X.slice(0, numTrain, trainingSamples);
-    Tensor y_val = y.slice(0, numTrain, trainingSamples);
+    std::mt19937 shuffleRng(randomSeed);
+    std::shuffle(shuffleIndices.begin(), shuffleIndices.end(), shuffleRng);
+
+    // Reorder X and y using shuffled indices
+    Tensor X_shuffled = torch::zeros_like(X);
+    Tensor y_shuffled = torch::zeros_like(y);
+    for (int i = 0; i < trainingSamples; i++) {
+        X_shuffled[i] = X[shuffleIndices[i]];
+        y_shuffled[i] = y[shuffleIndices[i]];
+    }
+
+    // Train/Validation/Test split (80/10/10)
+    int numTrain = static_cast<int>(trainingSamples * 0.8);
+    int numVal = static_cast<int>(trainingSamples * 0.1);
+    int numTest = trainingSamples - numTrain - numVal;
+
+    Tensor X_train = X_shuffled.slice(0, 0, numTrain);
+    Tensor y_train = y_shuffled.slice(0, 0, numTrain);
+    Tensor X_val = X_shuffled.slice(0, numTrain, numTrain + numVal);
+    Tensor y_val = y_shuffled.slice(0, numTrain, numTrain + numVal);
+    Tensor X_test = X_shuffled.slice(0, numTrain + numVal, trainingSamples);
+    Tensor y_test = y_shuffled.slice(0, numTrain + numVal, trainingSamples);
 
     std::cout << std::endl;
     std::cout << "Data Shapes" << std::endl;
     std::cout << "X (inputs):  " << X.sizes() << std::endl;
     std::cout << "y (targets): " << y.sizes() << std::endl;
-    std::cout << "Train: " << numTrain << " samples | Val: " << numVal << " samples (80/20 split)" << std::endl;
+    std::cout << "Windows shuffled before splitting (seed: " << randomSeed << ")" << std::endl;
+    std::cout << "Train: " << numTrain << " | Val: " << numVal << " | Test: " << numTest << " (80/10/10 split)" << std::endl;
     std::cout << std::endl;
 
     // Model Creation
@@ -269,7 +288,7 @@ int main(int argc, char* argv[]) {
     std::cout << std::endl;
 
     // Training parameters
-    const int batchSize = 32;
+    const int batchSize = 64;
     const double learningRate = 0.001; // Classic value .. TODO Should we tune this ? 
 
     auto criterion = torch::nn::MSELoss();
@@ -304,9 +323,9 @@ int main(int argc, char* argv[]) {
 
         // Training per batch
         for (int batchStart = 0; batchStart < numTrain; batchStart += batchSize) {
-            int currentBatchSize = std::min(batchSize, numTrain - batchStart);
+            int currentBatchSize = std::min(batchSize, numTrain - batchStart); // Just for the last iteration no left overs ...
 
-            // Extract batch using shuffled indices
+            // Extract batch using shuffled indices - Gather data
             std::vector<Tensor> batchXList, batchYList;
             for (int i = 0; i < currentBatchSize; i++) {
                 int idx = indices[batchStart + i];
@@ -404,6 +423,7 @@ int main(int argc, char* argv[]) {
 
     evaluateSet(X_train, y_train, numTrain, "Training");
     evaluateSet(X_val, y_val, numVal, "Validation");
+    evaluateSet(X_test, y_test, numTest, "Test");
     
     return 0;
 }

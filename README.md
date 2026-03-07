@@ -69,6 +69,24 @@ All sensor data is located in the `Data/` directory from a 6-DOF IMU sensor.
 
 **Usage:** Multi-step ahead prediction with LSTM (see `RNN/` directory) 
 
+#### LSTM Big Training Dataset (all_combined.csv)
+
+The file all_combined.csv combines all the 7 datasets into a single file
+
+| Column | Description | Units |
+|--------|-------------|-------|
+| 0 | Ground truth Roll angle |  |
+| 1 | Ground truth Roll rate |  |
+| 2 | Ground truth Pitch angle |  |
+| 3 | pitch_rate |  |
+| 4 | yaw_angle |  |
+| 5 | yaw_rate |  |
+| 6 | Control torque τ_roll (from PID controller) | N·m |
+| 7 | Control torque τ_pitch (from PID controller) | N·m |
+| 8 | Control torque τ_yaw (from PID controller) | N·m |
+
+The all_combined_reorder is the correct order our LSTM needs.
+
 ## Build & Run
 
 ### Installation

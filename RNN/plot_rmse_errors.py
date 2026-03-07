@@ -1,42 +1,46 @@
-import pandas as pd
 import matplotlib.pyplot as plt
-import numpy as np
+import re
+import sys
 
-# Read the RMSE errors CSV (no header)
-df = pd.read_csv('rmse_errors.csv', sep='\t', header=None, names=['epoch', 'rmse_rad'])
+if len(sys.argv) < 2:
+    print("Usage: python3 plot_rmse_errors.py <training_log.txt>")
+    print("Example: python3 plot_rmse_errors.py threesplitdata.txt")
+    sys.exit(1)
 
-# Convert radians to degrees
-df['rmse_deg'] = np.rad2deg(df['rmse_rad'])
+log_file = sys.argv[1]
 
-print("RMSE Errors Data:")
-print(df)
-print(f"\nInitial RMSE (epoch 0): {df.iloc[0]['rmse_rad']:.6f} rad = {df.iloc[0]['rmse_deg']:.3f} deg")
-print(f"Final MSE (epoch 1000): {df.iloc[-1]['rmse_rad']:.6f} rad = {df.iloc[-1]['rmse_deg']:.3f} deg")
-print(f"Improvement: {((df.iloc[0]['rmse_deg'] - df.iloc[-1]['rmse_deg']) / df.iloc[0]['rmse_deg'] * 100):.1f}%")
+epochs = []
+train_losses = []
+val_losses = []
 
-# Create figure with two subplots
-fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8))
+with open(log_file, 'r') as f:
+    for line in f:
+        match = re.match(r'Epoch\s+(\d+)\s+\|\s+Train Loss:\s+([\d.]+)\s+\|\s+Val Loss:\s+([\d.]+)', line)
+        if match:
+            epochs.append(int(match.group(1)))
+            train_losses.append(float(match.group(2)))
+            val_losses.append(float(match.group(3)))
 
-# Plot 1: MSE in degrees (log scale)
-ax1.plot(df['epoch'], df['rmse_deg'], marker='o', linewidth=2, markersize=5, color='blue')
-ax1.set_xlabel('Epoch', fontsize=12)
-ax1.set_ylabel('MSE (degrees)', fontsize=12)
-ax1.set_title('Training Loss vs Epoch (Degrees) - Log Scale', fontsize=14, fontweight='bold')
-ax1.set_yscale('log')
-ax1.grid(True, alpha=0.3, which='both')
+print(f"Parsed {len(epochs)} epochs from {log_file}")
+print(f"Epoch range: {epochs[0]} to {epochs[-1]}")
+print(f"Final Train Loss: {train_losses[-1]:.6f}")
+print(f"Final Val Loss:   {val_losses[-1]:.6f}")
 
-# Plot 2: MSE in radians (log scale)
-ax2.plot(df['epoch'], df['rmse_rad'], marker='o', linewidth=2, markersize=5, color='green')
-ax2.set_xlabel('Epoch', fontsize=12)
-ax2.set_ylabel('MSE (radians)', fontsize=12)
-ax2.set_title('Training Loss vs Epoch (Radians) - Log Scale', fontsize=14, fontweight='bold')
-ax2.set_yscale('log')
-ax2.grid(True, alpha=0.3, which='both')
+# Plot train vs val loss
+fig, ax = plt.subplots(figsize=(12, 6))
+
+ax.plot(epochs, train_losses, linewidth=2, label='Train Loss', color='blue')
+ax.plot(epochs, val_losses, linewidth=2, label='Validation Loss', color='orange')
+
+ax.set_xlabel('Epoch', fontsize=12)
+ax.set_ylabel('MSE Loss', fontsize=12)
+ax.set_title('Training vs Validation Loss', fontsize=14, fontweight='bold')
+ax.legend(fontsize=12)
+ax.grid(True, alpha=0.3)
 
 plt.tight_layout()
 
-# Save figure
-filename = 'Results/LSTM/mse_training_loss.png'
+filename = 'Results/LSTM/training_curve.png'
 plt.savefig(filename, dpi=300, bbox_inches='tight')
 print(f"\nSaved plot to {filename}")
 

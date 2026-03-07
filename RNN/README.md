@@ -32,3 +32,7 @@ gcloud compute scp --recurse Data/ instance-20260102-140421:~/project/ --zone "e
 ## FROM THE ROOT DIRECTORY
 docker build -f RNN/Dockerfile -t lstm-app .
 docker run --rm lstm-app
+
+# Architecture
+
+

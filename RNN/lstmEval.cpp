@@ -6,6 +6,9 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
+#include <random>
+#include <algorithm>
+#include <vector>
 
 #include <torch/torch.h>
 
@@ -131,7 +134,8 @@ int main(int argc, char* argv[]) {
     const int NUM_INPUT_FEATURES = 9;
     const int NUM_OUTPUT_FEATURES = 3;
     const int outputSize = windowSize * NUM_OUTPUT_FEATURES;
-    const int hiddenStateSize = 32;
+    const int hiddenStateSize = 128;
+    const unsigned int randomSeed = 42;  // Must match training for shuffle!
 
     std::cout << "LSTM Model Evaluation" << std::endl;
     std::cout << "Model: " << modelPath << std::endl;
@@ -156,7 +160,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Load CSV
-    CsvReader datasetReader("Data/dataset_1.csv");
+    CsvReader datasetReader("Data/Quadcopter_Datasets/all_combined_reordered.csv");
     datasetReader.read();
     Eigen::MatrixXd dataset = datasetReader.getEigenData();
 
@@ -175,11 +179,38 @@ int main(int argc, char* argv[]) {
     Tensor targetMean = featureMean.slice(/*dim=*/1, /*start=*/0, /*end=*/NUM_OUTPUT_FEATURES);
     Tensor targetStd = featureStd.slice(/*dim=*/1, /*start=*/0, /*end=*/NUM_OUTPUT_FEATURES);
 
-    // Train/Val split (must match training!)
+    // Create all windows
+    auto options_w = torch::TensorOptions().dtype(torch::kDouble);
+    Tensor anglesTensor = scaledDatasetTensor.slice(1, 0, NUM_OUTPUT_FEATURES);
+    Tensor X = torch::zeros({trainingSamples, lookbackWindow, NUM_INPUT_FEATURES}, options_w);
+    Tensor y = torch::zeros({trainingSamples, windowSize, NUM_OUTPUT_FEATURES}, options_w);
+
+    for (int i = 0; i < trainingSamples; i++) {
+        X[i] = scaledDatasetTensor.slice(0, i, i + lookbackWindow);
+        int predStart = i + lookbackWindow;
+        y[i] = anglesTensor.slice(0, predStart, predStart + windowSize);
+    }
+
+    // Shuffle windows (must match training seed!)
+    std::vector<int> shuffleIndices(trainingSamples);
+    for (int i = 0; i < trainingSamples; i++) shuffleIndices[i] = i;
+    std::mt19937 shuffleRng(randomSeed);
+    std::shuffle(shuffleIndices.begin(), shuffleIndices.end(), shuffleRng);
+
+    Tensor X_shuffled = torch::zeros_like(X);
+    Tensor y_shuffled = torch::zeros_like(y);
+    for (int i = 0; i < trainingSamples; i++) {
+        X_shuffled[i] = X[shuffleIndices[i]];
+        y_shuffled[i] = y[shuffleIndices[i]];
+    }
+
+    // Train/Val/Test split (80/10/10, must match training!)
     int numTrain = static_cast<int>(trainingSamples * 0.8);
+    int numVal = static_cast<int>(trainingSamples * 0.1);
+    int numTest = trainingSamples - numTrain - numVal;
 
     std::cout << "Data normalized (z-score standardization)" << std::endl;
-    std::cout << "Train/Val split: " << numTrain << " train | " << (trainingSamples - numTrain) << " val" << std::endl;
+    std::cout << "Train: " << numTrain << " | Val: " << numVal << " | Test: " << numTest << " (80/10/10 split)" << std::endl;
     std::cout << std::endl;
 
     // Handle --save-all mode
@@ -188,7 +219,6 @@ int main(int argc, char* argv[]) {
 
         model->eval();
         torch::NoGradGuard no_grad;
-        auto options = torch::TensorOptions().dtype(torch::kDouble);
 
         // Open output file
         std::ofstream outFile("Results/lstm_predictions.csv");
@@ -198,43 +228,40 @@ int main(int argc, char* argv[]) {
         }
 
         // Write header
-        outFile << "timestep,step_ahead,roll_pred,pitch_pred,yaw_pred,roll_gt,pitch_gt,yaw_gt,set" << std::endl;
+        outFile << "sample,step_ahead,roll_pred,pitch_pred,yaw_pred,roll_gt,pitch_gt,yaw_gt,set" << std::endl;
 
-        // Process all samples
+        // Process all shuffled samples
         for (int sample = 0; sample < trainingSamples; sample++) {
-            // Prepare normalized input
-            Tensor input = scaledDatasetTensor.slice(0, sample, sample + lookbackWindow).unsqueeze(0);
-
-            // Get prediction (in normalized space)
+            // Get prediction from shuffled window
+            Tensor input = X_shuffled[sample].unsqueeze(0);
             Tensor output = model->forward(input);
             Tensor prediction = output.view({1, windowSize, NUM_OUTPUT_FEATURES});
 
-            // Denormalize predictions back to radians
-            Tensor unscaledPred = (prediction * targetStd) + targetMean;
-            unscaledPred = unscaledPred.squeeze(0); // [windowSize, 3]
+            // Denormalize predictions and targets back to radians
+            Tensor unscaledPred = ((prediction * targetStd) + targetMean).squeeze(0);
+            Tensor unscaledTarget = (y_shuffled[sample] * targetStd) + targetMean;
 
-            // Get ground truth
-            int predStart = sample + lookbackWindow;
+            // Determine set label
+            std::string setLabel;
+            if (sample < numTrain) setLabel = "train";
+            else if (sample < numTrain + numVal) setLabel = "val";
+            else setLabel = "test";
 
             // Write predictions for each step
             for (int step = 0; step < windowSize; step++) {
-                int absoluteTimestep = predStart + step;
                 int stepAhead = step + 1;
 
-                // Get predicted angles (denormalized)
                 auto pred = unscaledPred[step];
                 double roll_pred = pred[0].item<double>();
                 double pitch_pred = pred[1].item<double>();
                 double yaw_pred = pred[2].item<double>();
 
-                // Get ground truth angles (original dataset)
-                double roll_gt = dataset(absoluteTimestep, 0);
-                double pitch_gt = dataset(absoluteTimestep, 1);
-                double yaw_gt = dataset(absoluteTimestep, 2);
+                auto gt = unscaledTarget[step];
+                double roll_gt = gt[0].item<double>();
+                double pitch_gt = gt[1].item<double>();
+                double yaw_gt = gt[2].item<double>();
 
-                // Write to CSV
-                std::string setLabel = (sample < numTrain) ? "train" : "val";
-                outFile << absoluteTimestep << "," << stepAhead << ","
+                outFile << sample << "," << stepAhead << ","
                        << roll_pred << "," << pitch_pred << "," << yaw_pred << ","
                        << roll_gt << "," << pitch_gt << "," << yaw_gt << ","
                        << setLabel << std::endl;
@@ -252,41 +279,34 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
-    // Single sample evaluation mode
+    // Single sample evaluation mode (index into shuffled windows)
     if (sampleIndex >= trainingSamples) {
         std::cerr << "Sample index too large! Max: " << trainingSamples - 1 << std::endl;
         return 1;
     }
 
-    // Prepare normalized input (lookback window)
-    Tensor input = scaledDatasetTensor.slice(0, sampleIndex, sampleIndex + lookbackWindow).unsqueeze(0);
+    // Determine which set this sample belongs to
+    std::string setLabel;
+    if (sampleIndex < numTrain) setLabel = "train";
+    else if (sampleIndex < numTrain + numVal) setLabel = "val";
+    else setLabel = "test";
 
-    // Ground truth for next N timesteps (after lookback window, original scale)
-    auto options = torch::TensorOptions().dtype(torch::kDouble);
-    Tensor groundTruth = torch::zeros({windowSize, NUM_OUTPUT_FEATURES}, options);
-    int predStart = sampleIndex + lookbackWindow;
-    for (int t = 0; t < windowSize; t++) {
-        for (int j = 0; j < NUM_OUTPUT_FEATURES; j++) {
-            groundTruth[t][j] = dataset(predStart + t, j);
-        }
-    }
+    std::cout << "Sample " << sampleIndex << " belongs to: " << setLabel << " set" << std::endl;
+    std::cout << std::endl;
 
-    // Run prediction
+    // Run prediction on shuffled window
     model->eval();
     torch::NoGradGuard no_grad;
 
-    Tensor output = model->forward(input);  // [1, N*3]
+    Tensor input = X_shuffled[sampleIndex].unsqueeze(0);
+    Tensor output = model->forward(input);
     Tensor prediction = output.view({1, windowSize, NUM_OUTPUT_FEATURES});
 
-    // Denormalize predictions back to radians
-    Tensor unscaledPred = ((prediction * targetStd) + targetMean).squeeze(0); // [N, 3]
+    // Denormalize predictions and targets back to radians
+    Tensor unscaledPred = ((prediction * targetStd) + targetMean).squeeze(0);
+    Tensor groundTruth = (y_shuffled[sampleIndex] * targetStd) + targetMean;
 
     // Display results
-    std::cout << "=== Input (timesteps " << sampleIndex << " to " << sampleIndex + lookbackWindow - 1 << ") ===" << std::endl;
-    std::cout << "Shape: [1, " << lookbackWindow << ", " << NUM_INPUT_FEATURES << "]" << std::endl;
-    std::cout << "(normalized)" << std::endl;
-    std::cout << std::endl;
-
     std::cout << "=== Prediction (next " << windowSize << " timesteps) ===" << std::endl;
     std::cout << "Shape: [" << windowSize << ", 3] (roll, pitch, yaw) in radians" << std::endl;
     std::cout << unscaledPred << std::endl;

@@ -1,0 +1,44 @@
+LSTM Multi-Step Ahead Prediction
+Configuration:
+  Lookback window (K): 10 timesteps
+  Prediction horizon (N): 10 timesteps
+  Input features: 9
+  Output features: 3
+  Epochs: 100
+  Random seed: 42
+
+Data/Quadcopter_Datasets/all_combined_reordered.csv rows: 21164 Cols: 9 (21164x9)
+Number of training samples: 21145 after removing windowSize and loopback
+Converted eigen matrix to Tensor
+Tensor shape: [21164, 9]
+Data standardized successfully.
+Angles tensor shape: [21164, 3]
+
+Data Shapes
+X (inputs):  [21145, 10, 9]
+y (targets): [21145, 10, 3]
+Train: 16916 samples | Val: 4229 samples (80/20 split)
+
+Model Created
+Architecture: Input(9) -> LSTM(128) -> Attention -> FC(30)
+
+Training Configuration
+Batch size: 64
+Epochs: 100
+Learning rate: 0.001
+Optimizer: Adam
+Loss function: torch::nn::MSELossImpl
+
+Starting Training
+Epoch   0 | Train Loss: 0.132542 | Val Loss: 0.038628
+Epoch   5 | Train Loss: 0.015115 | Val Loss: 0.017252
+Epoch  10 | Train Loss: 0.013461 | Val Loss: 0.017272
+Epoch  15 | Train Loss: 0.013169 | Val Loss: 0.014914
+Epoch  20 | Train Loss: 0.012866 | Val Loss: 0.013058
+Epoch  25 | Train Loss: 0.012487 | Val Loss: 0.019467
+Epoch  30 | Train Loss: 0.011983 | Val Loss: 0.015435
+Epoch  35 | Train Loss: 0.011726 | Val Loss: 0.014618
+Epoch  40 | Train Loss: 0.011528 | Val Loss: 0.014409
+Epoch  45 | Train Loss: 0.011290 | Val Loss: 0.018061
+Epoch  50 | Train Loss: 0.011070 | Val Loss: 0.010429
+Epoch  55 | Train Loss: 0.011310 | Val Loss: 0.015159

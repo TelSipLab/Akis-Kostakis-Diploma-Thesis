@@ -1,0 +1,105 @@
+LSTM Multi-Step Ahead Prediction
+Configuration:
+  Lookback window (K): 10 timesteps
+  Prediction horizon (N): 10 timesteps
+  Input features: 9
+  Output features: 3
+  Epochs: 100
+  Random seed: 42
+
+Data/Quadcopter_Datasets/all_combined_reordered.csv rows: 21164 Cols: 9 (21164x9)
+Number of training samples: 21145 after removing windowSize and loopback
+Converted eigen matrix to Tensor
+Tensor shape: [21164, 9]
+Data standardized successfully.
+Angles tensor shape: [21164, 3]
+
+Data Shapes
+X (inputs):  [21145, 10, 9]
+y (targets): [21145, 10, 3]
+Train: 16916 samples | Val: 4229 samples (80/20 split)
+
+Model Created
+Architecture: Input(9) -> LSTM(32) -> Attention -> FC(30)
+
+Training Configuration
+Batch size: 32
+Epochs: 100
+Learning rate: 0.001
+Optimizer: Adam
+Loss function: torch::nn::MSELossImpl
+
+Starting Training
+Epoch   0 | Train Loss: 0.191354 | Val Loss: 0.128863
+Epoch   5 | Train Loss: 0.034773 | Val Loss: 0.059290
+Epoch  10 | Train Loss: 0.032971 | Val Loss: 0.038746
+Epoch  15 | Train Loss: 0.032806 | Val Loss: 0.028515
+Epoch  20 | Train Loss: 0.032297 | Val Loss: 0.026787
+Epoch  25 | Train Loss: 0.031490 | Val Loss: 0.031386
+Epoch  30 | Train Loss: 0.032255 | Val Loss: 0.022996
+Epoch  35 | Train Loss: 0.031219 | Val Loss: 0.029160
+Epoch  40 | Train Loss: 0.031268 | Val Loss: 0.027568
+Epoch  45 | Train Loss: 0.031389 | Val Loss: 0.022370
+Epoch  50 | Train Loss: 0.031010 | Val Loss: 0.016195
+Epoch  55 | Train Loss: 0.030965 | Val Loss: 0.022387
+Epoch  60 | Train Loss: 0.031203 | Val Loss: 0.017620
+Epoch  65 | Train Loss: 0.030737 | Val Loss: 0.020197
+Epoch  70 | Train Loss: 0.031013 | Val Loss: 0.023245
+Epoch  75 | Train Loss: 0.031061 | Val Loss: 0.024316
+Epoch  80 | Train Loss: 0.030771 | Val Loss: 0.024774
+Epoch  85 | Train Loss: 0.030802 | Val Loss: 0.024902
+Epoch  90 | Train Loss: 0.030742 | Val Loss: 0.021124
+Epoch  95 | Train Loss: 0.030418 | Val Loss: 0.022326
+Epoch  99 | Train Loss: 0.030902 | Val Loss: 0.016999
+  -- Saved model: lstm_model_epoch_100.pt
+
+Training Complete
+Elapsed(s) = 171
+=== Training Metrics (16916 samples) ===
+Overall Metrics:
+  RMSE (all): 0.012314 rad = 0.706 deg
+  MAE  (all): 0.008804 rad = 0.504 deg
+
+RMSE per angle (all samples, all steps):
+  Roll  RMSE: 0.014061 rad = 0.806 deg 
+  Pitch RMSE: 0.009943 rad = 0.570 deg 
+  Yaw   RMSE: 0.012584 rad = 0.721 deg
+
+RMSE per step
+Step | Roll (deg) | Pitch (deg) | Yaw (deg)
+-----+------------+-------------+-----------
+   1 |   0.526570 |    0.477784 |  0.676305
+   2 |   0.529558 |    0.429983 |  0.661248
+   3 |   0.544446 |    0.410699 |  0.655606
+   4 |   0.595297 |    0.423144 |  0.663597
+   5 |   0.680222 |    0.463260 |  0.682974
+   6 |   0.774033 |    0.525582 |  0.703173
+   7 |   0.869580 |    0.594597 |  0.730859
+   8 |   0.968736 |    0.665958 |  0.763514
+   9 |   1.070289 |    0.736935 |  0.801749
+  10 |   1.174807 |    0.808359 |  0.844235
+
+=== Validation Metrics (4229 samples) ===
+Overall Metrics:
+  RMSE (all): 0.019142 rad = 1.097 deg
+  MAE  (all): 0.014739 rad = 0.844 deg
+
+RMSE per angle (all samples, all steps):
+  Roll  RMSE: 0.020554 rad = 1.178 deg 
+  Pitch RMSE: 0.016976 rad = 0.973 deg 
+  Yaw   RMSE: 0.019713 rad = 1.129 deg
+
+RMSE per step
+Step | Roll (deg) | Pitch (deg) | Yaw (deg)
+-----+------------+-------------+-----------
+   1 |   0.972324 |    0.853403 |  1.141944
+   2 |   0.977440 |    0.838080 |  1.127855
+   3 |   0.993461 |    0.838009 |  1.117668
+   4 |   1.048091 |    0.863132 |  1.106961
+   5 |   1.112141 |    0.889300 |  1.102874
+   6 |   1.165864 |    0.936769 |  1.108886
+   7 |   1.227137 |    0.997940 |  1.118988
+   8 |   1.306815 |    1.066871 |  1.134884
+   9 |   1.386379 |    1.139764 |  1.153484
+  10 |   1.466640 |    1.216887 |  1.178651
+
