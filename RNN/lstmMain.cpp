@@ -220,6 +220,7 @@ int main(int argc, char* argv[]) {
     Tensor scaledDatasetTensor = (datasetTensor - featureMean) / featureStd;
     std::cout << "Data standardized successfully." << std::endl;
 
+    // Saved to be used later for evalatuion
     Tensor targetMean = featureMean.slice(/*dim=*/1, /*start=*/0, /*end=*/NUM_OUTPUT_FEATURES);
     Tensor targetStd = featureStd.slice(/*dim=*/1, /*start=*/0, /*end=*/NUM_OUTPUT_FEATURES);
 
@@ -232,7 +233,7 @@ int main(int argc, char* argv[]) {
     Tensor y = torch::zeros({trainingSamples, windowSize, NUM_OUTPUT_FEATURES}, options);
 
     // Angles tensor containg the ground truth values
-    Tensor anglesTensor = scaledDatasetTensor.slice(1, 0, NUM_OUTPUT_FEATURES);
+    Tensor anglesTensor = scaledDatasetTensor.slice(1, 0, 3); // 0-1-2 columns have the thuth values
     std::cout << "Angles tensor shape: " << anglesTensor.sizes() << std::endl;
     // [3397, 3]
 
