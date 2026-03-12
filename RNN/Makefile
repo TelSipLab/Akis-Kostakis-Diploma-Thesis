@@ -35,6 +35,12 @@ lstmEval: lstmEval.cpp
 		lstmEval.cpp -o lstmEval.out \
 		$(LIBTORCH_LIBS) $(LIBTORCH_RPATH)
 
+lstmEvalNoAttn: lstmEval.cpp LSTMNetworkNoAttention.h
+	$(CXX) $(CXXFLAGS) $(LIBTORCH_INCLUDE) $(UTILS_LIBRARY_INCLUDE) \
+		-DUSE_NO_ATTENTION \
+		lstmEval.cpp -o lstmEvalNoAttn.out \
+		$(LIBTORCH_LIBS) $(LIBTORCH_RPATH)
+
 clean:
 	rm -f *.out *.o
 

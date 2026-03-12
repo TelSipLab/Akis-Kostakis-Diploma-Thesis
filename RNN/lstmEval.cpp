@@ -1,6 +1,10 @@
 #include "Utils.hpp"
 #include "csvreader.hpp"
+#ifdef USE_NO_ATTENTION
+#include "LSTMNetworkNoAttention.h"
+#else
 #include "LSTMNetwork.h"
+#endif
 
 #include <exception>
 #include <string>
@@ -33,6 +37,7 @@ int main(int argc, char* argv[]) {
     bool saveAll = false;
     std::string modelPath;
     int sampleIndex = 0;
+    int windowSize = 10;  // Default, override with --window N
 
     if(argc == 1) {
         std::cout << "Wrong input use -h to see help" << std::endl;
@@ -46,6 +51,7 @@ int main(int argc, char* argv[]) {
         std::cout << "Options:" << std::endl;
         std::cout << "  [sample_index]       Evaluate single sample (e.g., 0, 1000)" << std::endl;
         std::cout << "  --save-all, -a       Generate predictions for ALL samples and save to CSV" << std::endl;
+        std::cout << "  --window N, -w N     Prediction horizon (default: 10)" << std::endl;
         std::cout << "  --help, -h           Show this help message" << std::endl;
         std::cout << std::endl;
         std::cout << "Examples:" << std::endl;
@@ -60,6 +66,9 @@ int main(int argc, char* argv[]) {
         std::string arg = argv[i];
         if(arg == "--save-all" || arg == "-a" ) {
             saveAll = true;
+        } else if((arg == "--window" || arg == "-w") && i + 1 < argc) {
+            windowSize = std::stoi(argv[i + 1]);
+            i++;
         } else if(i == 2 && isNumber(arg)) {
             sampleIndex = std::stoi(arg);
         } else {
@@ -68,7 +77,6 @@ int main(int argc, char* argv[]) {
     }
 
     const int lookbackWindow = 10;  // Must match training
-    const int windowSize = 10;
     const int NUM_INPUT_FEATURES = 9;
     const int NUM_OUTPUT_FEATURES = 3;
     const int outputSize = windowSize * NUM_OUTPUT_FEATURES;
@@ -83,6 +91,7 @@ int main(int argc, char* argv[]) {
         std::cout << "Mode: Single sample evaluation (index: " << sampleIndex << ")" << std::endl;
     }
     std::cout << "Lookback window: " << lookbackWindow << " timesteps" << std::endl;
+    std::cout << "Prediction horizon: " << windowSize << " timesteps" << std::endl;
     std::cout << std::endl;
 
     // Load model

@@ -15,19 +15,22 @@ df = pd.read_csv('Results/lstm_predictions.csv')
 
 # Filter to test set only
 df = df[df['set'] == 'test'].reset_index(drop=True)
-print(f"Test set: {len(df)} rows ({len(df) // 10} samples)")
+
+# Auto-detect number of steps per sample from the data
+num_steps = df['step_ahead'].max()
+print(f"Test set: {len(df)} rows ({len(df) // num_steps} samples, {num_steps} steps each)")
 
 # Convert radians to degrees
 for col in ['roll_pred', 'roll_gt', 'pitch_pred', 'pitch_gt', 'yaw_pred', 'yaw_gt']:
     df[col + '_deg'] = np.rad2deg(df[col])
 
-# Each sample has 10 rows (step_ahead 1-10)
-start_pos = sample_index * 10
-if start_pos + 10 > len(df):
-    print(f"Sample index too large! Max: {len(df) // 10 - 1}")
+# Each sample has num_steps rows
+start_pos = sample_index * num_steps
+if start_pos + num_steps > len(df):
+    print(f"Sample index too large! Max: {len(df) // num_steps - 1}")
     sys.exit(1)
 
-df_selection = df.iloc[start_pos:start_pos + 10].copy()
+df_selection = df.iloc[start_pos:start_pos + num_steps].copy()
 x_axis = df_selection['step_ahead'].values
 
 # Compute RMSE for this sample
@@ -66,13 +69,13 @@ for i, (name, pred_col, gt_col, rmse) in enumerate(angles):
                  verticalalignment='top',
                  bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
 
-axes[0].set_title(f'LSTM 10-Step Ahead Prediction - Test Sample {sample_index}', fontsize=14, fontweight='bold')
+axes[0].set_title(f'LSTM {num_steps}-Step Ahead Prediction - Test Sample {sample_index}', fontsize=14, fontweight='bold')
 axes[2].set_xlabel('Step Ahead', fontsize=16)
-axes[2].set_xticks(range(1, 11))
+axes[2].set_xticks(range(1, num_steps + 1))
 
 plt.tight_layout()
 
-filename = f'Results/LSTM/single_sample_prediction_test_{sample_index}.png'
+filename = f'Results/LSTM/single_sample_prediction_N{num_steps}_test_{sample_index}.png'
 plt.savefig(filename, dpi=150, bbox_inches='tight')
 print(f"\nSaved plot to {filename}")
 
