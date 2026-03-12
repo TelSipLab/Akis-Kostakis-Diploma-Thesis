@@ -1,5 +1,6 @@
 #include "Utils.hpp"
 #include "csvreader.hpp"
+#include "LSTMNetwork.h"
 
 #include <exception>
 #include <string>
@@ -13,69 +14,6 @@
 #include <torch/torch.h>
 
 using torch::Tensor;
-
-// Copy of LSTMNetwork class (must match training!)
-class LSTMNetwork: public torch::nn::Module {
-public:
-    LSTMNetwork(int inputSize, int hiddenStateSize, int outputSize, double dropoutRate = 0.2) {
-        lstm = register_module("lstm", torch::nn::LSTM(
-            torch::nn::LSTMOptions(inputSize, hiddenStateSize).batch_first(true)
-        ));
-
-        // Attention layers
-        attn_linear = register_module("attn_linear", torch::nn::Linear(hiddenStateSize, hiddenStateSize));
-        attn_vector = register_module("attn_vector", torch::nn::Linear(hiddenStateSize, 1));
-
-        // Dropout (inactive during eval)
-        dropout = register_module("dropout", torch::nn::Dropout(dropoutRate));
-
-        fc = register_module("fc", torch::nn::Linear(hiddenStateSize, outputSize));
-        this->to(torch::kDouble);
-    }
-
-    Tensor forward(Tensor X) {
-        auto lstmOutput = lstm->forward(X);
-        auto hiddenStates = std::get<0>(lstmOutput);
-
-        hiddenStates = dropout->forward(hiddenStates);
-
-        auto energy = torch::tanh(attn_linear->forward(hiddenStates));
-        auto scores = attn_vector->forward(energy).squeeze(-1);
-        auto weights = torch::softmax(scores, /*dim=*/1);
-
-        auto context = torch::bmm(weights.unsqueeze(1), hiddenStates).squeeze(1);
-        context = dropout->forward(context);
-
-        auto out = fc->forward(context);
-        return out;
-    }
-
-    static Tensor eigenToTensor(const Eigen::MatrixXd& matrixToConvert) {
-        int rows = matrixToConvert.rows();
-        int cols = matrixToConvert.cols();
-
-        auto options = torch::TensorOptions().dtype(torch::kDouble);
-        auto tensor = torch::zeros({rows, cols}, options);
-
-        for (int i = 0; i < rows; i++) {
-            std::vector<double> rowData(cols);
-            for (int j = 0; j < cols; j++) {
-                rowData[j] = matrixToConvert(i, j);
-            }
-
-            auto rowTensor = torch::from_blob(rowData.data(), {cols}, options).clone();
-            tensor[i] = rowTensor;
-        }
-        return tensor;
-    }
-
-private:
-    torch::nn::LSTM lstm{nullptr};
-    torch::nn::Linear attn_linear{nullptr};
-    torch::nn::Linear attn_vector{nullptr};
-    torch::nn::Dropout dropout{nullptr};
-    torch::nn::Linear fc{nullptr};
-};
 
 bool isNumber(const std::string& str) {
     if (str.empty()) return false;
@@ -129,13 +67,13 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    const int lookbackWindow = 10;  // Must match training!
+    const int lookbackWindow = 10;  // Must match training
     const int windowSize = 10;
     const int NUM_INPUT_FEATURES = 9;
     const int NUM_OUTPUT_FEATURES = 3;
     const int outputSize = windowSize * NUM_OUTPUT_FEATURES;
     const int hiddenStateSize = 128;
-    const unsigned int randomSeed = 42;  // Must match training for shuffle!
+    const unsigned int randomSeed = 42;  // Must match training for shuffle
 
     std::cout << "LSTM Model Evaluation" << std::endl;
     std::cout << "Model: " << modelPath << std::endl;
@@ -209,9 +147,26 @@ int main(int argc, char* argv[]) {
     int numVal = static_cast<int>(trainingSamples * 0.1);
     int numTest = trainingSamples - numTrain - numVal;
 
+    // Split into train/val/test (must match training!)
+    Tensor X_train = X_shuffled.slice(0, 0, numTrain);
+    Tensor y_train = y_shuffled.slice(0, 0, numTrain);
+    Tensor X_val = X_shuffled.slice(0, numTrain, numTrain + numVal);
+    Tensor y_val = y_shuffled.slice(0, numTrain, numTrain + numVal);
+    Tensor X_test = X_shuffled.slice(0, numTrain + numVal, trainingSamples);
+    Tensor y_test = y_shuffled.slice(0, numTrain + numVal, trainingSamples);
+
     std::cout << "Data normalized (z-score standardization)" << std::endl;
     std::cout << "Train: " << numTrain << " | Val: " << numVal << " | Test: " << numTest << " (80/10/10 split)" << std::endl;
     std::cout << std::endl;
+
+    // Evaluate all splits
+    model->eval();
+    {
+        torch::NoGradGuard no_grad;
+        evaluateSet(model, X_train, y_train, numTrain, windowSize, NUM_OUTPUT_FEATURES, targetStd, targetMean, "Training");
+        evaluateSet(model, X_val, y_val, numVal, windowSize, NUM_OUTPUT_FEATURES, targetStd, targetMean, "Validation");
+        evaluateSet(model, X_test, y_test, numTest, windowSize, NUM_OUTPUT_FEATURES, targetStd, targetMean, "Test");
+    }
 
     // Handle --save-all mode
     if (saveAll) {
