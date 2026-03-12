@@ -1,4 +1,4 @@
-#include "LSTMNetwork.h"
+#include "LSTMNetworkNoAttention.h"
 #include "Utils.hpp"
 #include "csvreader.hpp"
 
@@ -27,10 +27,10 @@ void setRandomSeeds(unsigned int seed) {
 }
 
 int main(int argc, char* argv[]) {
-    // Parse command-line arguments
     int numEpochs = 300;  // Default value
     unsigned int randomSeed = 42;  // Default seed for reproducibility
 
+    // Parse command-line arguments
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
         if ((arg == "-epochs" || arg == "--epochs") && i + 1 < argc) {
@@ -52,14 +52,14 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // Set random seeds for reproducibility
-    setRandomSeeds(randomSeed);
-
     const int lookbackWindow = 10;
-    const int windowSize = 30;           // Predict next 30 timesteps
-    const int NUM_INPUT_FEATURES = 9;   // 9 columns in dataset_1.csv
+    const int windowSize = 30;
+    const int NUM_INPUT_FEATURES = 9;   // 9 columns in data: all_combined_reordered.csv
     const int NUM_OUTPUT_FEATURES = 3;  // Predict 3 angles (roll, pitch, yaw)
     const int hiddenStateSize = 128;
+
+    // Set random seeds for reproducibility
+    setRandomSeeds(randomSeed);
 
     std::cout << "LSTM Multi-Step Ahead Prediction" << std::endl;
     std::cout << "Configuration:" << std::endl;
