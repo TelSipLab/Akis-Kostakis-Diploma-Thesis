@@ -19,13 +19,13 @@ ln -s ../include .
 # Train to google cloud
 
 # this is ont to just update the cpp files on VM instance
-gcloud compute scp RNN/*.cpp instance-20260102-140421:~/project/RNN/ --zone "europe-west1-b"
+gcloud compute scp RNN/*.cpp RNN/*.h instance-20260320-172833:~/project/RNN/ --zone "europe-west1-b"
 
 # Should not change that much after initial copy
-gcloud compute scp RNN/Makefile instance-20260102-140421:~/project/RNN/ --zone "europe-west1-b"
-gcloud compute scp RNN/Dockerfile instance-20260102-140421:~/project/RNN/ --zone "europe-west1-b"
-gcloud compute scp --recurse include/ instance-20260102-140421:~/project/ --zone "europe-west1-b"
-gcloud compute scp --recurse Data/ instance-20260102-140421:~/project/ --zone "europe-west1-b"
+gcloud compute scp RNN/Makefile instance-20260320-172833:~/project/RNN/ --zone "europe-west1-b"
+gcloud compute scp RNN/Dockerfile instance-20260320-172833:~/project/RNN/ --zone "europe-west1-b"
+gcloud compute scp --recurse include/ instance-20260320-172833:~/project/ --zone "europe-west1-b"
+gcloud compute scp --recurse Data/ instance-20260320-172833:~/project/ --zone "europe-west1-b"
 
 # Docker
 

@@ -1,4 +1,4 @@
-#include "LSTMNetworkNoAttention.h"
+#include "LSTMNetwork.h"
 #include "Utils.hpp"
 #include "csvreader.hpp"
 
@@ -52,7 +52,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    const int lookbackWindow = 10;
+    const int lookbackWindow = 50;
     const int windowSize = 30;
     const int NUM_INPUT_FEATURES = 9;   // 9 columns in data: all_combined_reordered.csv
     const int NUM_OUTPUT_FEATURES = 3;  // Predict 3 angles (roll, pitch, yaw)

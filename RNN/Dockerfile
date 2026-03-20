@@ -36,7 +36,7 @@ COPY RNN/Makefile Makefile
 RUN sed -i 's|LIBTORCH_PATH = .*|LIBTORCH_PATH = /opt/libtorch|g' Makefile
 
 # 4. Source files (change frequently) - copied last
-COPY RNN/*.cpp ./
+COPY RNN/*.cpp RNN/*.h ./
 
 # Compile the LSTM application
 WORKDIR /app

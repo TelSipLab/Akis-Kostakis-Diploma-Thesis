@@ -76,7 +76,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    const int lookbackWindow = 10;  // Must match training
+    const int lookbackWindow = 50;  // Must match training
     const int NUM_INPUT_FEATURES = 9;
     const int NUM_OUTPUT_FEATURES = 3;
     const int outputSize = windowSize * NUM_OUTPUT_FEATURES;

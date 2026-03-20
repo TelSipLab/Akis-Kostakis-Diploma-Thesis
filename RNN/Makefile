@@ -13,17 +13,17 @@ LIBTORCH_RPATH = -Wl,-rpath,$(LIBTORCH_PATH)/lib
 CXX = g++
 CXXFLAGS = -std=c++17 -g -Wall -O0 -D_GLIBCXX_USE_CXX11_ABI=1
 
-all: example lstmExample lstm lstmEval
+all: lstm lstmEval lstmEvalNoAttn
 
-example: mainExample.cpp
-	$(CXX) $(CXXFLAGS) $(LIBTORCH_INCLUDE) \
-		mainExample.cpp -o example.out \
-		$(LIBTORCH_LIBS) $(LIBTORCH_RPATH)
+# example: mainExample.cpp
+# 	$(CXX) $(CXXFLAGS) $(LIBTORCH_INCLUDE) \
+# 		mainExample.cpp -o example.out \
+# 		$(LIBTORCH_LIBS) $(LIBTORCH_RPATH)
 
-lstmExample: lstmExample.cpp
-	$(CXX) $(CXXFLAGS) $(LIBTORCH_INCLUDE) \
-		lstmExample.cpp -o example.out \
-		$(LIBTORCH_LIBS) $(LIBTORCH_RPATH)
+# lstmExample: lstmExample.cpp
+# 	$(CXX) $(CXXFLAGS) $(LIBTORCH_INCLUDE) \
+# 		lstmExample.cpp -o example.out \
+# 		$(LIBTORCH_LIBS) $(LIBTORCH_RPATH)
 
 lstm: lstmMain.cpp
 	$(CXX) $(CXXFLAGS) $(LIBTORCH_INCLUDE) $(UTILS_LIBRARY_INCLUDE) \
