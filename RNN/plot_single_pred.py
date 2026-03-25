@@ -1,86 +1,131 @@
+"""
+Single Sample LSTM Prediction Visualizer
+
+Plots the LSTM multi-step ahead prediction vs ground truth for a single test sample.
+Reads the predictions CSV exported by lstmEval.out (--save-all mode), filters to the
+test set, and creates a 3-row subplot (Roll, Pitch, Yaw) showing predicted vs actual
+angles in degrees at each step ahead. Each subplot includes an RMSE annotation.
+
+Usage:
+    python3 plot_single_pred.py <sample_index> [csv_path] [lookback_window]
+
+Arguments:
+    sample_index    - Index into the test set (0 = first test sample)
+    csv_path        - Path to predictions CSV (default: Results/lstm_predictions.csv)
+    lookback_window - K value used during training, displayed in the plot title (default: 10)
+
+Output:
+    Saves PNG to Results/LSTM/single_sample_prediction_N{steps}_K{lookback}_test_{index}.png
+"""
+
+import argparse
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-import sys
 
-if len(sys.argv) < 2:
-    print("Usage: python3 plot_single_pred.py <sample_index> [csv_path] [lookback_window]")
-    print("  sample_index:     index into the test set (0 = first test sample)")
-    print("  csv_path:         path to predictions CSV (default: Results/lstm_predictions.csv)")
-    print("  lookback_window:  K value for title (default: 10)")
-    sys.exit(1)
 
-sample_index = int(sys.argv[1])
-csv_path = sys.argv[2] if len(sys.argv) >= 3 else 'Results/lstm_predictions.csv'
-lookback_window = int(sys.argv[3]) if len(sys.argv) >= 4 else 10
+def parse_args():
+    parser = argparse.ArgumentParser(description="Plot LSTM multi-step prediction vs ground truth for a single test sample")
+    parser.add_argument("sample_index", type=int, help="Index into the test set (0 = first test sample)")
+    parser.add_argument("--csv", type=str, default="Results/lstm_predictions.csv", help="Path to predictions CSV")
+    parser.add_argument("--lookback", "-K", type=int, default=10, help="Lookback window K for plot title")
+    return parser.parse_args()
 
-# Read the predictions CSV
-df = pd.read_csv(csv_path)
 
-# Filter to test set only
-df = df[df['set'] == 'test'].reset_index(drop=True)
+def load_test_data(csv_path):
+    """Load predictions CSV and filter to test set only."""
+    df = pd.read_csv(csv_path)
+    df = df[df['set'] == 'test'].reset_index(drop=True)
 
-# Auto-detect number of steps per sample from the data
-num_steps = df['step_ahead'].max()
-print(f"Test set: {len(df)} rows ({len(df) // num_steps} samples, {num_steps} steps each)")
+    num_steps = df['step_ahead'].max()
+    num_samples = len(df) // num_steps
+    print(f"Test set: {len(df)} rows ({num_samples} samples, {num_steps} steps each)")
 
-# Convert radians to degrees
-for col in ['roll_pred', 'roll_gt', 'pitch_pred', 'pitch_gt', 'yaw_pred', 'yaw_gt']:
-    df[col + '_deg'] = np.rad2deg(df[col])
+    # Convert radians to degrees
+    for col in ['roll_pred', 'roll_gt', 'pitch_pred', 'pitch_gt', 'yaw_pred', 'yaw_gt']:
+        df[col + '_deg'] = np.rad2deg(df[col])
 
-# Each sample has num_steps rows
-start_pos = sample_index * num_steps
-if start_pos + num_steps > len(df):
-    print(f"Sample index too large! Max: {len(df) // num_steps - 1}")
-    sys.exit(1)
+    return df, num_steps, num_samples
 
-df_selection = df.iloc[start_pos:start_pos + num_steps].copy()
-x_axis = df_selection['step_ahead'].values
 
-# Compute RMSE for this sample
-roll_rmse = np.sqrt(np.mean((df_selection['roll_pred_deg'] - df_selection['roll_gt_deg'])**2))
-pitch_rmse = np.sqrt(np.mean((df_selection['pitch_pred_deg'] - df_selection['pitch_gt_deg'])**2))
-yaw_rmse = np.sqrt(np.mean((df_selection['yaw_pred_deg'] - df_selection['yaw_gt_deg'])**2))
+def extract_sample(df, sample_index, num_steps):
+    """Extract a single sample's predictions and ground truth."""
+    start_pos = sample_index * num_steps
 
-print(f"Sample {sample_index} | Roll RMSE: {roll_rmse:.3f} | Pitch RMSE: {pitch_rmse:.3f} | Yaw RMSE: {yaw_rmse:.3f}")
+    if start_pos + num_steps > len(df):
+        raise ValueError(f"Sample index too large! Max: {len(df) // num_steps - 1}")
 
-# Create 3-row subplot (matching EKF style)
-fig, axes = plt.subplots(3, 1, figsize=(12, 10), sharex=True)
+    return df.iloc[start_pos:start_pos + num_steps].copy()
 
-for ax in axes:
-    ax.tick_params(axis='both', labelsize=14)
 
-angles = [
-    ('Roll',  'roll_pred_deg',  'roll_gt_deg',  roll_rmse),
-    ('Pitch', 'pitch_pred_deg', 'pitch_gt_deg', pitch_rmse),
-    ('Yaw',   'yaw_pred_deg',   'yaw_gt_deg',   yaw_rmse),
-]
+def compute_rmse(df_sample):
+    """Compute per-angle RMSE for a single sample."""
+    rmse = {}
+    for angle in ['roll', 'pitch', 'yaw']:
+        pred = df_sample[f'{angle}_pred_deg']
+        gt = df_sample[f'{angle}_gt_deg']
+        rmse[angle] = np.sqrt(np.mean((pred - gt) ** 2))
+    return rmse
 
-for i, (name, pred_col, gt_col, rmse) in enumerate(angles):
-    axes[i].plot(x_axis, df_selection[pred_col].values,
-                 label='LSTM Prediction', linestyle='-', linewidth=2, marker='x',
-                 markersize=8, color='#ff7f0e')
-    axes[i].plot(x_axis, df_selection[gt_col].values,
-                 label='Ground Truth', linestyle='--', linewidth=2, marker='o',
-                 markersize=6, color='#1f77b4')
-    axes[i].set_ylabel(f'{name} Angle (degrees)', fontsize=14)
-    axes[i].legend(loc='upper right', fontsize=14)
-    axes[i].grid(True, alpha=0.3)
 
-    # RMSE text box
-    axes[i].text(0.02, 0.95, f'{name} RMSE: {rmse:.3f} deg',
-                 transform=axes[i].transAxes, fontsize=13,
-                 verticalalignment='top',
-                 bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+def plot_sample(df_sample, sample_index, num_steps, lookback_window, rmse):
+    """Create 3-row subplot with Roll, Pitch, Yaw predictions vs ground truth."""
+    fig, axes = plt.subplots(3, 1, figsize=(12, 10), sharex=True)
+    x_axis = df_sample['step_ahead'].values
 
-axes[0].set_title(f'LSTM {num_steps}-Step Ahead Prediction (K={lookback_window}) - Test Sample {sample_index}', fontsize=14, fontweight='bold')
-axes[2].set_xlabel('Step Ahead', fontsize=16)
-axes[2].set_xticks(range(1, num_steps + 1))
+    angles = [
+        ('Roll',  'roll_pred_deg',  'roll_gt_deg'),
+        ('Pitch', 'pitch_pred_deg', 'pitch_gt_deg'),
+        ('Yaw',   'yaw_pred_deg',   'yaw_gt_deg'),
+    ]
 
-plt.tight_layout()
+    for i, (name, pred_col, gt_col) in enumerate(angles):
+        ax = axes[i]
+        ax.tick_params(axis='both', labelsize=14)
 
-filename = f'Results/LSTM/single_sample_prediction_N{num_steps}_K{lookback_window}_test_{sample_index}.png'
-plt.savefig(filename, dpi=150, bbox_inches='tight')
-print(f"\nSaved plot to {filename}")
+        ax.plot(x_axis, df_sample[pred_col].values,
+                label='LSTM Prediction', linestyle='-', linewidth=2,
+                marker='x', markersize=8, color='#ff7f0e')
+        ax.plot(x_axis, df_sample[gt_col].values,
+                label='Ground Truth', linestyle='--', linewidth=2,
+                marker='o', markersize=6, color='#1f77b4')
 
-plt.show()
+        ax.set_ylabel(f'{name} Angle (degrees)', fontsize=14)
+        ax.legend(loc='upper right', fontsize=14)
+        ax.grid(True, alpha=0.3)
+
+        ax.text(0.02, 0.95, f'{name} RMSE: {rmse[name.lower()]:.3f} deg',
+                transform=ax.transAxes, fontsize=13, verticalalignment='top',
+                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+
+    axes[0].set_title(
+        f'LSTM {num_steps}-Step Ahead Prediction (K={lookback_window}) - Test Sample {sample_index}',
+        fontsize=14, fontweight='bold')
+    axes[2].set_xlabel('Step Ahead', fontsize=16)
+    axes[2].set_xticks(range(1, num_steps + 1))
+
+    plt.tight_layout()
+    return fig
+
+
+def main():
+    args = parse_args()
+
+    df, num_steps, num_samples = load_test_data(args.csv)
+    df_sample = extract_sample(df, args.sample_index, num_steps)
+    rmse = compute_rmse(df_sample)
+
+    print(f"Sample {args.sample_index} | Roll RMSE: {rmse['roll']:.3f} | "
+          f"Pitch RMSE: {rmse['pitch']:.3f} | Yaw RMSE: {rmse['yaw']:.3f}")
+
+    fig = plot_sample(df_sample, args.sample_index, num_steps, args.lookback, rmse)
+
+    filename = f'Results/LSTM/single_sample_prediction_N{num_steps}_K{args.lookback}_test_{args.sample_index}.png'
+    fig.savefig(filename, dpi=150, bbox_inches='tight')
+    print(f"\nSaved plot to {filename}")
+
+    plt.show()
+
+
+if __name__ == '__main__':
+    main()
