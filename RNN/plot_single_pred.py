@@ -3,15 +3,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 import sys
 
-if len(sys.argv) == 2:
-    sample_index = int(sys.argv[1])
-else:
-    print("Usage: python3 plot_single_pred.py <sample_index>")
-    print("  sample_index: index into the test set (0 = first test sample)")
+if len(sys.argv) < 2:
+    print("Usage: python3 plot_single_pred.py <sample_index> [csv_path] [lookback_window]")
+    print("  sample_index:     index into the test set (0 = first test sample)")
+    print("  csv_path:         path to predictions CSV (default: Results/lstm_predictions.csv)")
+    print("  lookback_window:  K value for title (default: 10)")
     sys.exit(1)
 
+sample_index = int(sys.argv[1])
+csv_path = sys.argv[2] if len(sys.argv) >= 3 else 'Results/lstm_predictions.csv'
+lookback_window = int(sys.argv[3]) if len(sys.argv) >= 4 else 10
+
 # Read the predictions CSV
-df = pd.read_csv('Results/lstm_predictions.csv')
+df = pd.read_csv(csv_path)
 
 # Filter to test set only
 df = df[df['set'] == 'test'].reset_index(drop=True)
@@ -69,13 +73,13 @@ for i, (name, pred_col, gt_col, rmse) in enumerate(angles):
                  verticalalignment='top',
                  bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
 
-axes[0].set_title(f'LSTM {num_steps}-Step Ahead Prediction - Test Sample {sample_index}', fontsize=14, fontweight='bold')
+axes[0].set_title(f'LSTM {num_steps}-Step Ahead Prediction (K={lookback_window}) - Test Sample {sample_index}', fontsize=14, fontweight='bold')
 axes[2].set_xlabel('Step Ahead', fontsize=16)
 axes[2].set_xticks(range(1, num_steps + 1))
 
 plt.tight_layout()
 
-filename = f'Results/LSTM/single_sample_prediction_N{num_steps}_test_{sample_index}.png'
+filename = f'Results/LSTM/single_sample_prediction_N{num_steps}_K{lookback_window}_test_{sample_index}.png'
 plt.savefig(filename, dpi=150, bbox_inches='tight')
 print(f"\nSaved plot to {filename}")
 
