@@ -40,7 +40,7 @@ COPY RNN/*.cpp RNN/*.h ./
 
 # Compile the LSTM application
 WORKDIR /app
-RUN make lstm -j
+RUN make all -j
 
 # Default command: run the trained model
 CMD ["./lstm.out", "--epochs", "10"]
