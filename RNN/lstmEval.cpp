@@ -33,6 +33,20 @@ bool isNumber(const std::string& str) {
     }
 }
 
+int printHelpMessageAndExit() {
+    std::cout << "Usage: ./lstmEval.out <model_path> [options]" << std::endl;
+    std::cout << "Options:" << std::endl;
+    std::cout << "  [sample_index]       Evaluate single sample (e.g., 0, 1000)" << std::endl;
+    std::cout << "  --save-all, -a       Generate predictions for ALL samples and save to CSV" << std::endl;
+    std::cout << "  --window N, -w N     Prediction horizon (default: 10)" << std::endl;
+    std::cout << "  --help, -h           Show this help message" << std::endl;
+    std::cout << std::endl;
+    std::cout << "Examples:" << std::endl;
+    std::cout << "  ./lstmEval.out lstm_model_epoch_1000.pt 0" << std::endl;
+    std::cout << "  ./lstmEval.out lstm_model_epoch_1000.pt --save-all" << std::endl;
+    return 0;
+}
+
 int main(int argc, char* argv[]) {
     bool saveAll = false;
     std::string modelPath;
@@ -47,17 +61,7 @@ int main(int argc, char* argv[]) {
     // Check if first argument is a help flag
     std::string firstArg = argv[1];
     if (firstArg == "--help" || firstArg == "-h") {
-        std::cout << "Usage: ./lstmEval.out <model_path> [options]" << std::endl;
-        std::cout << "Options:" << std::endl;
-        std::cout << "  [sample_index]       Evaluate single sample (e.g., 0, 1000)" << std::endl;
-        std::cout << "  --save-all, -a       Generate predictions for ALL samples and save to CSV" << std::endl;
-        std::cout << "  --window N, -w N     Prediction horizon (default: 10)" << std::endl;
-        std::cout << "  --help, -h           Show this help message" << std::endl;
-        std::cout << std::endl;
-        std::cout << "Examples:" << std::endl;
-        std::cout << "  ./lstmEval.out lstm_model_epoch_1000.pt 0" << std::endl;
-        std::cout << "  ./lstmEval.out lstm_model_epoch_1000.pt --save-all" << std::endl;
-        return 0;
+        return printHelpMessageAndExit();
     }
 
     modelPath = firstArg;
@@ -73,9 +77,11 @@ int main(int argc, char* argv[]) {
             sampleIndex = std::stoi(arg);
         } else {
             std::cout << "Wrong argument use -h to view help" << std::endl;
+            return -1;
         }
     }
 
+    // Model Configuration
     const int lookbackWindow = 50;  // Must match training
     const int NUM_INPUT_FEATURES = 9;
     const int NUM_OUTPUT_FEATURES = 3;
@@ -103,7 +109,7 @@ int main(int argc, char* argv[]) {
         std::cout << "Model loaded successfully!" << std::endl;
     } catch (const std::exception &e) {
         std::cerr << "Error loading model: " << e.what() << std::endl;
-        return 1;
+        return -1;
     }
 
     // Load CSV
@@ -114,7 +120,7 @@ int main(int argc, char* argv[]) {
     int totalSamples = dataset.rows();
     int trainingSamples = totalSamples - windowSize - lookbackWindow + 1;
 
-    // Convert to tensor and normalize (must match training!)
+    // Convert to tensor and normalize - must match training!
     Tensor datasetTensor = LSTMNetwork::eigenToTensor(dataset);
 
     Tensor featureMean = datasetTensor.mean(/*dim=*/0, /*keepdim=*/true);
@@ -138,7 +144,7 @@ int main(int argc, char* argv[]) {
         y[i] = anglesTensor.slice(0, predStart, predStart + windowSize);
     }
 
-    // Shuffle windows (must match training seed!)
+    // Shuffle windows
     std::vector<int> shuffleIndices(trainingSamples);
     for (int i = 0; i < trainingSamples; i++) shuffleIndices[i] = i;
     std::mt19937 shuffleRng(randomSeed);
@@ -151,12 +157,12 @@ int main(int argc, char* argv[]) {
         y_shuffled[i] = y[shuffleIndices[i]];
     }
 
-    // Train/Val/Test split (80/10/10, must match training!)
+    // Train/Val/Test
     int numTrain = static_cast<int>(trainingSamples * 0.8);
     int numVal = static_cast<int>(trainingSamples * 0.1);
     int numTest = trainingSamples - numTrain - numVal;
 
-    // Split into train/val/test (must match training!)
+    // Split into train/val/test
     Tensor X_train = X_shuffled.slice(0, 0, numTrain);
     Tensor y_train = y_shuffled.slice(0, 0, numTrain);
     Tensor X_val = X_shuffled.slice(0, numTrain, numTrain + numVal);
@@ -185,7 +191,7 @@ int main(int argc, char* argv[]) {
         torch::NoGradGuard no_grad;
 
         // Open output file
-        std::ofstream outFile("Results/lstm_predictions.csv");
+        std::ofstream outFile("Results/lstm_predictions.csv"); // Rename after app ends to proper name ...
         if (!outFile.is_open()) {
             std::cerr << "Error: Could not open Results/lstm_predictions.csv for writing" << std::endl;
             return 1;
@@ -207,9 +213,13 @@ int main(int argc, char* argv[]) {
 
             // Determine set label
             std::string setLabel;
-            if (sample < numTrain) setLabel = "train";
-            else if (sample < numTrain + numVal) setLabel = "val";
-            else setLabel = "test";
+            if (sample < numTrain) { 
+                setLabel = "train";
+            } else if (sample < numTrain + numVal) {
+                setLabel = "val";
+            } else {
+                setLabel = "test";
+            }
 
             // Write predictions for each step
             for (int step = 0; step < windowSize; step++) {
@@ -251,10 +261,15 @@ int main(int argc, char* argv[]) {
 
     // Determine which set this sample belongs to
     std::string setLabel;
-    if (sampleIndex < numTrain) setLabel = "train";
-    else if (sampleIndex < numTrain + numVal) setLabel = "val";
-    else setLabel = "test";
-
+    if (sampleIndex < numTrain) {
+        setLabel = "train";
+    } else if (sampleIndex < numTrain + numVal) {
+        setLabel = "val";
+    }
+    else {
+        setLabel = "test";
+    }
+    
     std::cout << "Sample " << sampleIndex << " belongs to: " << setLabel << " set" << std::endl;
     std::cout << std::endl;
 
