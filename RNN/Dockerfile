@@ -29,6 +29,9 @@ ENV LD_LIBRARY_PATH=/opt/libtorch/lib:$LD_LIBRARY_PATH
 # Create app directory (WORKDIR creates it if it doesn't exist)
 WORKDIR /app
 
+# Needed when running the evalution to save the csv file
+RUN mkdir /app/Results
+
 COPY Data/ ./Data/
 COPY include/ ./include/
 COPY RNN/Makefile Makefile

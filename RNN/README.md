@@ -19,20 +19,44 @@ ln -s ../include .
 # Train to google cloud
 
 # this is ont to just update the cpp files on VM instance
-gcloud compute scp RNN/*.cpp RNN/*.h instance-20260320-172833:~/project/RNN/ --zone "europe-west1-b"
+gcloud compute scp RNN/*.cpp RNN/*.h instance-20260325-174124:~/project/RNN/ --zone "europe-west1-b"
 
 # Should not change that much after initial copy
-gcloud compute scp RNN/Makefile instance-20260320-172833:~/project/RNN/ --zone "europe-west1-b"
-gcloud compute scp RNN/Dockerfile instance-20260320-172833:~/project/RNN/ --zone "europe-west1-b"
-gcloud compute scp --recurse include/ instance-20260320-172833:~/project/ --zone "europe-west1-b"
-gcloud compute scp --recurse Data/ instance-20260320-172833:~/project/ --zone "europe-west1-b"
+gcloud compute scp RNN/Makefile instance-20260325-174124:~/project/RNN/ --zone "europe-west1-b"
+gcloud compute scp RNN/Dockerfile instance-20260325-174124:~/project/RNN/ --zone "europe-west1-b"
+gcloud compute scp --recurse include/ instance-20260325-174124:~/project/ --zone "europe-west1-b"
+gcloud compute scp --recurse Data/ instance-20260325-174124:~/project/ --zone "europe-west1-b"
 
 # Docker
 
-## FROM THE ROOT DIRECTORY
+## Run docker and mount disk to save results
+
+### Create folder to mount docker after
+```bash
+# Inside VM
+mkdir -p ~/results
+```
+
+### Build image
+```bash
 docker build -f RNN/Dockerfile -t lstm-app .
-docker run --rm lstm-app
+```
 
-# Architecture
+### Run detached and mount
+```bash
+docker run -d --name lstm-train -v ~/results:/app/output lstm-app bash -c \
+    "./lstm.out --epochs 500 2>&1 | tee /app/output/train.log && cp lstm_model_epoch_*.pt /app/output/"
+```
 
 
+### Evaluate model
+```bash
+docker run -v ~/results:/app/output lstm-app bash -c \
+"./lstmEvalNoAttn.out /app/output/lstm_model_epoch_500.pt --save-all && cp Results/lstm_predictions.csv /app/output/"
+```
+
+### Copy locally
+
+```bash
+gcloud compute scp instance-20260325-174124:~/results/* ./RNN/ --zone="europe-west1-b"
+```

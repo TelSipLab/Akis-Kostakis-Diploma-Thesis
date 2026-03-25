@@ -1,4 +1,4 @@
-#include "LSTMNetwork.h"
+#include "LSTMNetworkNoAttention.h"
 #include "Utils.hpp"
 #include "csvreader.hpp"
 
