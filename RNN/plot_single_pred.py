@@ -90,21 +90,31 @@ def plot_sample(df_sample, sample_index, num_steps, lookback_window, rmse):
                 label='Ground Truth', linestyle='--', linewidth=2,
                 marker='o', markersize=6, color='#1f77b4')
 
-        ax.set_ylabel(f'{name} Angle (degrees)', fontsize=14)
-        ax.legend(loc='upper right', fontsize=14)
         ax.grid(True, alpha=0.3)
 
-        ax.text(0.02, 0.95, f'{name} RMSE: {rmse[name.lower()]:.3f} deg',
-                transform=ax.transAxes, fontsize=13, verticalalignment='top',
-                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+    # Y-axis labels and RMSE annotation on right side of each subplot
+    angles_names = ['Roll', 'Pitch', 'Yaw']
+    for i, name in enumerate(angles_names):
+        axes[i].set_ylabel(f'{name} Angle (deg)', fontsize=13)
+        # Place RMSE on the right y-axis area
+        ax2 = axes[i].twinx()
+        ax2.set_ylabel(f'RMSE: {rmse[name.lower()]:.3f}°', fontsize=12,
+                        color='#d62728', fontweight='bold', rotation=270, labelpad=18)
+        ax2.set_yticks([])
 
-    axes[0].set_title(
+    # Title and shared legend
+    fig.suptitle(
         f'LSTM {num_steps}-Step Ahead Prediction (K={lookback_window}) - Test Sample {sample_index}',
-        fontsize=14, fontweight='bold')
+        fontsize=14, fontweight='bold', y=1.02)
+
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc='upper center', ncol=2, fontsize=13,
+               framealpha=0.9, bbox_to_anchor=(0.5, 0.99))
+
     axes[2].set_xlabel('Step Ahead', fontsize=16)
     axes[2].set_xticks(range(1, num_steps + 1))
 
-    plt.tight_layout()
+    plt.tight_layout(rect=[0, 0, 1, 0.97])
     return fig
 
 
