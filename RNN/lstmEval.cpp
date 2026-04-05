@@ -11,8 +11,6 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
-#include <random>
-#include <algorithm>
 #include <vector>
 
 #include <torch/torch.h>
@@ -82,12 +80,12 @@ int main(int argc, char* argv[]) {
     }
 
     // Model Configuration
-    const int lookbackWindow = 50;  // Must match training
+    const int lookbackWindow = 10;  // Must match training
     const int NUM_INPUT_FEATURES = 9;
     const int NUM_OUTPUT_FEATURES = 3;
     const int outputSize = windowSize * NUM_OUTPUT_FEATURES;
     const int hiddenStateSize = 128;
-    const unsigned int randomSeed = 42;  // Must match training for shuffle
+    // randomSeed no longer needed — flight-based split is deterministic
 
     std::cout << "LSTM Model Evaluation" << std::endl;
     std::cout << "Model: " << modelPath << std::endl;
@@ -117,14 +115,25 @@ int main(int argc, char* argv[]) {
     datasetReader.read();
     Eigen::MatrixXd dataset = datasetReader.getEigenData();
 
-    int totalSamples = dataset.rows();
-    int trainingSamples = totalSamples - windowSize - lookbackWindow + 1;
-
-    // Convert to tensor and normalize - must match training!
+    // Convert to tensor
     Tensor datasetTensor = LSTMNetwork::eigenToTensor(dataset);
 
-    Tensor featureMean = datasetTensor.mean(/*dim=*/0, /*keepdim=*/true);
-    Tensor featureStd = datasetTensor.std(/*dim=*/0, /*unbiased=*/true, /*keepdim=*/true);
+    // ========================
+    // Flight-based data split (must match training!)
+    // ========================
+    std::vector<int> flightSizes = {2590, 2599, 5591, 2594, 2600, 2597, 2593};
+    std::vector<int> flightStartIdx(flightSizes.size());
+    flightStartIdx[0] = 0;
+    for (size_t i = 1; i < flightSizes.size(); i++) {
+        flightStartIdx[i] = flightStartIdx[i - 1] + flightSizes[i - 1];
+    }
+
+    int trainFlightsEnd = flightStartIdx[5];
+
+    // Normalize using ONLY training data statistics (flights 1-5) - must match training!
+    Tensor trainDataTensor = datasetTensor.slice(0, 0, trainFlightsEnd);
+    Tensor featureMean = trainDataTensor.mean(/*dim=*/0, /*keepdim=*/true);
+    Tensor featureStd = trainDataTensor.std(/*dim=*/0, /*unbiased=*/true, /*keepdim=*/true);
     featureStd = featureStd + 1e-8;
 
     Tensor scaledDatasetTensor = (datasetTensor - featureMean) / featureStd;
@@ -132,46 +141,47 @@ int main(int argc, char* argv[]) {
     Tensor targetMean = featureMean.slice(/*dim=*/1, /*start=*/0, /*end=*/NUM_OUTPUT_FEATURES);
     Tensor targetStd = featureStd.slice(/*dim=*/1, /*start=*/0, /*end=*/NUM_OUTPUT_FEATURES);
 
-    // Create all windows
+    // Create sliding windows per flight (windows never cross flight boundaries)
     auto options_w = torch::TensorOptions().dtype(torch::kDouble);
     Tensor anglesTensor = scaledDatasetTensor.slice(1, 0, NUM_OUTPUT_FEATURES);
-    Tensor X = torch::zeros({trainingSamples, lookbackWindow, NUM_INPUT_FEATURES}, options_w);
-    Tensor y = torch::zeros({trainingSamples, windowSize, NUM_OUTPUT_FEATURES}, options_w);
 
-    for (int i = 0; i < trainingSamples; i++) {
-        X[i] = scaledDatasetTensor.slice(0, i, i + lookbackWindow);
-        int predStart = i + lookbackWindow;
-        y[i] = anglesTensor.slice(0, predStart, predStart + windowSize);
+    auto createFlightWindows = [&](int startRow, int flightLen) {
+        int numWindows = flightLen - lookbackWindow - windowSize + 1;
+        Tensor Xf = torch::zeros({numWindows, lookbackWindow, NUM_INPUT_FEATURES}, options_w);
+        Tensor yf = torch::zeros({numWindows, windowSize, NUM_OUTPUT_FEATURES}, options_w);
+        for (int i = 0; i < numWindows; i++) {
+            int rowIdx = startRow + i;
+            Xf[i] = scaledDatasetTensor.slice(0, rowIdx, rowIdx + lookbackWindow);
+            int predStart = rowIdx + lookbackWindow;
+            yf[i] = anglesTensor.slice(0, predStart, predStart + windowSize);
+        }
+        return std::make_pair(Xf, yf);
+    };
+
+    // Build training windows from flights 1-5
+    std::vector<Tensor> trainXList, trainYList;
+    for (int f = 0; f < 5; f++) {
+        auto [Xf, yf] = createFlightWindows(flightStartIdx[f], flightSizes[f]);
+        trainXList.push_back(Xf);
+        trainYList.push_back(yf);
     }
+    Tensor X_train = torch::cat(trainXList, 0);
+    Tensor y_train = torch::cat(trainYList, 0);
 
-    // Shuffle windows
-    std::vector<int> shuffleIndices(trainingSamples);
-    for (int i = 0; i < trainingSamples; i++) shuffleIndices[i] = i;
-    std::mt19937 shuffleRng(randomSeed);
-    std::shuffle(shuffleIndices.begin(), shuffleIndices.end(), shuffleRng);
+    // Validation windows from flight 6
+    auto [X_val, y_val] = createFlightWindows(flightStartIdx[5], flightSizes[5]);
 
-    Tensor X_shuffled = torch::zeros_like(X);
-    Tensor y_shuffled = torch::zeros_like(y);
-    for (int i = 0; i < trainingSamples; i++) {
-        X_shuffled[i] = X[shuffleIndices[i]];
-        y_shuffled[i] = y[shuffleIndices[i]];
-    }
+    // Test windows from flight 7
+    auto [X_test, y_test] = createFlightWindows(flightStartIdx[6], flightSizes[6]);
 
-    // Train/Val/Test
-    int numTrain = static_cast<int>(trainingSamples * 0.8);
-    int numVal = static_cast<int>(trainingSamples * 0.1);
-    int numTest = trainingSamples - numTrain - numVal;
+    int numTrain = X_train.size(0);
+    int numVal = X_val.size(0);
+    int numTest = X_test.size(0);
+    int trainingSamples = numTrain + numVal + numTest;
 
-    // Split into train/val/test
-    Tensor X_train = X_shuffled.slice(0, 0, numTrain);
-    Tensor y_train = y_shuffled.slice(0, 0, numTrain);
-    Tensor X_val = X_shuffled.slice(0, numTrain, numTrain + numVal);
-    Tensor y_val = y_shuffled.slice(0, numTrain, numTrain + numVal);
-    Tensor X_test = X_shuffled.slice(0, numTrain + numVal, trainingSamples);
-    Tensor y_test = y_shuffled.slice(0, numTrain + numVal, trainingSamples);
-
-    std::cout << "Data normalized (z-score standardization)" << std::endl;
-    std::cout << "Train: " << numTrain << " | Val: " << numVal << " | Test: " << numTest << " (80/10/10 split)" << std::endl;
+    std::cout << "Data normalized (z-score, training flights only)" << std::endl;
+    std::cout << "Train: " << numTrain << " | Val: " << numVal << " | Test: " << numTest
+              << " (flight-based split, no data leakage)" << std::endl;
     std::cout << std::endl;
 
     // Evaluate all splits
@@ -183,6 +193,10 @@ int main(int argc, char* argv[]) {
         evaluateSet(model, X_test, y_test, numTest, windowSize, NUM_OUTPUT_FEATURES, targetStd, targetMean, "Test");
     }
 
+    // Concatenate all splits for indexed access (train, then val, then test - chronological)
+    Tensor X_all = torch::cat({X_train, X_val, X_test}, 0);
+    Tensor y_all = torch::cat({y_train, y_val, y_test}, 0);
+
     // Handle --save-all mode
     if (saveAll) {
         std::cout << "Generating predictions for " << trainingSamples << " samples..." << std::endl;
@@ -191,7 +205,7 @@ int main(int argc, char* argv[]) {
         torch::NoGradGuard no_grad;
 
         // Open output file
-        std::ofstream outFile("Results/lstm_predictions.csv"); // Rename after app ends to proper name ...
+        std::ofstream outFile("Results/lstm_predictions.csv");
         if (!outFile.is_open()) {
             std::cerr << "Error: Could not open Results/lstm_predictions.csv for writing" << std::endl;
             return 1;
@@ -200,20 +214,19 @@ int main(int argc, char* argv[]) {
         // Write header
         outFile << "sample,step_ahead,roll_pred,pitch_pred,yaw_pred,roll_gt,pitch_gt,yaw_gt,set" << std::endl;
 
-        // Process all shuffled samples
+        // Process all samples (ordered: train, val, test)
         for (int sample = 0; sample < trainingSamples; sample++) {
-            // Get prediction from shuffled window
-            Tensor input = X_shuffled[sample].unsqueeze(0);
+            Tensor input = X_all[sample].unsqueeze(0);
             Tensor output = model->forward(input);
             Tensor prediction = output.view({1, windowSize, NUM_OUTPUT_FEATURES});
 
             // Denormalize predictions and targets back to radians
             Tensor unscaledPred = ((prediction * targetStd) + targetMean).squeeze(0);
-            Tensor unscaledTarget = (y_shuffled[sample] * targetStd) + targetMean;
+            Tensor unscaledTarget = (y_all[sample] * targetStd) + targetMean;
 
             // Determine set label
             std::string setLabel;
-            if (sample < numTrain) { 
+            if (sample < numTrain) {
                 setLabel = "train";
             } else if (sample < numTrain + numVal) {
                 setLabel = "val";
@@ -253,7 +266,7 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
-    // Single sample evaluation mode (index into shuffled windows)
+    // Single sample evaluation mode
     if (sampleIndex >= trainingSamples) {
         std::cerr << "Sample index too large! Max: " << trainingSamples - 1 << std::endl;
         return 1;
@@ -265,25 +278,24 @@ int main(int argc, char* argv[]) {
         setLabel = "train";
     } else if (sampleIndex < numTrain + numVal) {
         setLabel = "val";
-    }
-    else {
+    } else {
         setLabel = "test";
     }
-    
+
     std::cout << "Sample " << sampleIndex << " belongs to: " << setLabel << " set" << std::endl;
     std::cout << std::endl;
 
-    // Run prediction on shuffled window
+    // Run prediction
     model->eval();
     torch::NoGradGuard no_grad;
 
-    Tensor input = X_shuffled[sampleIndex].unsqueeze(0);
+    Tensor input = X_all[sampleIndex].unsqueeze(0);
     Tensor output = model->forward(input);
     Tensor prediction = output.view({1, windowSize, NUM_OUTPUT_FEATURES});
 
     // Denormalize predictions and targets back to radians
     Tensor unscaledPred = ((prediction * targetStd) + targetMean).squeeze(0);
-    Tensor groundTruth = (y_shuffled[sampleIndex] * targetStd) + targetMean;
+    Tensor groundTruth = (y_all[sampleIndex] * targetStd) + targetMean;
 
     // Display results
     std::cout << "=== Prediction (next " << windowSize << " timesteps) ===" << std::endl;

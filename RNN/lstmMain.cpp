@@ -1,4 +1,4 @@
-#include "LSTMNetworkNoAttention.h"
+#include "LSTMNetwork.h"
 #include "Utils.hpp"
 #include "csvreader.hpp"
 
@@ -52,8 +52,8 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    const int lookbackWindow = 50;
-    const int windowSize = 30;
+    const int lookbackWindow = 10;
+    const int windowSize = 10;
     const int NUM_INPUT_FEATURES = 9;   // 9 columns in data: all_combined_reordered.csv
     const int NUM_OUTPUT_FEATURES = 3;  // Predict 3 angles (roll, pitch, yaw)
     const int hiddenStateSize = 128;
@@ -78,85 +78,99 @@ int main(int argc, char* argv[]) {
     Eigen::MatrixXd dataset = datasetReader.getEigenData();
     int totalSamples = dataset.rows();
 
-    int trainingSamples = totalSamples - windowSize - lookbackWindow +1;  // Remove windowSize from the training sample
-    std::cout << "Number of training samples: " << trainingSamples  << " after removing windowSize and loopback" << std::endl;
-
     // Convert dataset to tensor
     Tensor datasetTensor = LSTMNetwork::eigenToTensor(dataset);
     std::cout << "Converted eigen matrix to Tensor" << std::endl;
     std::cout << "Tensor shape: " << datasetTensor.sizes() << std::endl;
 
-    // Normalize the data ...
+    // ========================
+    // Flight-based data split (no data leakage)
+    // ========================
+    // Flight sample counts (from individual dataset_*.csv files)
+    // Train: Flights 1-5 | Validation: Flight 6 | Test: Flight 7
+    std::vector<int> flightSizes = {2590, 2599, 5591, 2594, 2600, 2597, 2593};
+    std::vector<int> flightStartIdx(flightSizes.size());
+    flightStartIdx[0] = 0;
+    for (size_t i = 1; i < flightSizes.size(); i++) {
+        flightStartIdx[i] = flightStartIdx[i - 1] + flightSizes[i - 1];
+    }
 
-    // 1. Calculate mean and standar deviation
-    Tensor featureMean = datasetTensor.mean(/*dim=*/0, /*keepdim=*/true);
-    Tensor featureStd = datasetTensor.std(/*dim=*/0, /*unbiased=*/true, /*keepdim=*/true);
+    int trainFlightsEnd = flightStartIdx[5];  // End of flight 5 = start of flight 6
+    int valFlightEnd = flightStartIdx[6];      // End of flight 6 = start of flight 7
+
+    std::cout << "Flight-based split:" << std::endl;
+    std::cout << "  Train (flights 1-5): samples 0-" << trainFlightsEnd - 1
+              << " (" << trainFlightsEnd << " samples)" << std::endl;
+    std::cout << "  Val   (flight 6):    samples " << trainFlightsEnd << "-" << valFlightEnd - 1
+              << " (" << flightSizes[5] << " samples)" << std::endl;
+    std::cout << "  Test  (flight 7):    samples " << valFlightEnd << "-" << totalSamples - 1
+              << " (" << flightSizes[6] << " samples)" << std::endl;
+
+    // ========================
+    // Normalize using ONLY training data statistics (flights 1-5)
+    // ========================
+    Tensor trainDataTensor = datasetTensor.slice(0, 0, trainFlightsEnd);
+    Tensor featureMean = trainDataTensor.mean(/*dim=*/0, /*keepdim=*/true);
+    Tensor featureStd = trainDataTensor.std(/*dim=*/0, /*unbiased=*/true, /*keepdim=*/true);
 
     // Add a tiny epsilon to std to prevent division by zero in case a column is perfectly constant
     featureStd = featureStd + 1e-8;
 
-    // 2. Scale the entire dataset: (x - mean) / std
+    // Scale the entire dataset using training statistics
     Tensor scaledDatasetTensor = (datasetTensor - featureMean) / featureStd;
-    std::cout << "Data standardized successfully." << std::endl;
+    std::cout << "Data standardized using training flights statistics only." << std::endl;
 
-    // Saved to be used later for evalatuion
+    // Saved to be used later for evaluation
     Tensor targetMean = featureMean.slice(/*dim=*/1, /*start=*/0, /*end=*/NUM_OUTPUT_FEATURES);
     Tensor targetStd = featureStd.slice(/*dim=*/1, /*start=*/0, /*end=*/NUM_OUTPUT_FEATURES);
 
-    ////////////////////////
-
-
-    // Pre-allocate X and y tensors
+    // ========================
+    // Create sliding windows per flight (windows never cross flight boundaries)
+    // ========================
     auto options = torch::TensorOptions().dtype(torch::kDouble);
-    Tensor X = torch::zeros({trainingSamples, lookbackWindow, NUM_INPUT_FEATURES}, options);
-    Tensor y = torch::zeros({trainingSamples, windowSize, NUM_OUTPUT_FEATURES}, options);
+    Tensor anglesTensor = scaledDatasetTensor.slice(1, 0, NUM_OUTPUT_FEATURES);
 
-    // Angles tensor containg the ground truth values
-    Tensor anglesTensor = scaledDatasetTensor.slice(1, 0, 3); // 0-1-2 columns have the thuth values
-    std::cout << "Angles tensor shape: " << anglesTensor.sizes() << std::endl;
-    // [3397, 3]
+    // Helper: create windows from a flight's data range [startRow, startRow + flightLen)
+    auto createFlightWindows = [&](int startRow, int flightLen) {
+        int numWindows = flightLen - lookbackWindow - windowSize + 1;
+        Tensor Xf = torch::zeros({numWindows, lookbackWindow, NUM_INPUT_FEATURES}, options);
+        Tensor yf = torch::zeros({numWindows, windowSize, NUM_OUTPUT_FEATURES}, options);
+        for (int i = 0; i < numWindows; i++) {
+            int rowIdx = startRow + i;
+            Xf[i] = scaledDatasetTensor.slice(0, rowIdx, rowIdx + lookbackWindow);
+            int predStart = rowIdx + lookbackWindow;
+            yf[i] = anglesTensor.slice(0, predStart, predStart + windowSize);
+        }
+        return std::make_pair(Xf, yf);
+    };
 
-    // Create sequences
-    for (int i = 0; i < trainingSamples; i++) {
-        X[i] = scaledDatasetTensor.slice(0, i, i + lookbackWindow);
-        
-        int predStart = i + lookbackWindow;
-        y[i] = anglesTensor.slice(0, predStart, predStart + windowSize);
+    // Build training windows from flights 1-5
+    std::vector<Tensor> trainXList, trainYList;
+    for (int f = 0; f < 5; f++) {
+        auto [Xf, yf] = createFlightWindows(flightStartIdx[f], flightSizes[f]);
+        trainXList.push_back(Xf);
+        trainYList.push_back(yf);
     }
+    Tensor X_train = torch::cat(trainXList, 0);
+    Tensor y_train = torch::cat(trainYList, 0);
 
-    // Shuffle all windows before splitting (mix data from all flights)
-    std::vector<int> shuffleIndices(trainingSamples);
-    for (int i = 0; i < trainingSamples; i++) shuffleIndices[i] = i;
+    // Validation windows from flight 6
+    auto [X_val, y_val] = createFlightWindows(flightStartIdx[5], flightSizes[5]);
 
-    std::mt19937 shuffleRng(randomSeed);
-    std::shuffle(shuffleIndices.begin(), shuffleIndices.end(), shuffleRng);
+    // Test windows from flight 7
+    auto [X_test, y_test] = createFlightWindows(flightStartIdx[6], flightSizes[6]);
 
-    // Reorder X and y using shuffled indices
-    Tensor X_shuffled = torch::zeros_like(X);
-    Tensor y_shuffled = torch::zeros_like(y);
-    for (int i = 0; i < trainingSamples; i++) {
-        X_shuffled[i] = X[shuffleIndices[i]];
-        y_shuffled[i] = y[shuffleIndices[i]];
-    }
-
-    // Train/Validation/Test split (80/10/10)
-    int numTrain = static_cast<int>(trainingSamples * 0.8);
-    int numVal = static_cast<int>(trainingSamples * 0.1);
-    int numTest = trainingSamples - numTrain - numVal;
-
-    Tensor X_train = X_shuffled.slice(0, 0, numTrain);
-    Tensor y_train = y_shuffled.slice(0, 0, numTrain);
-    Tensor X_val = X_shuffled.slice(0, numTrain, numTrain + numVal);
-    Tensor y_val = y_shuffled.slice(0, numTrain, numTrain + numVal);
-    Tensor X_test = X_shuffled.slice(0, numTrain + numVal, trainingSamples);
-    Tensor y_test = y_shuffled.slice(0, numTrain + numVal, trainingSamples);
+    int numTrain = X_train.size(0);
+    int numVal = X_val.size(0);
+    int numTest = X_test.size(0);
 
     std::cout << std::endl;
-    std::cout << "Data Shapes" << std::endl;
-    std::cout << "X (inputs):  " << X.sizes() << std::endl;
-    std::cout << "y (targets): " << y.sizes() << std::endl;
-    std::cout << "Windows shuffled before splitting (seed: " << randomSeed << ")" << std::endl;
-    std::cout << "Train: " << numTrain << " | Val: " << numVal << " | Test: " << numTest << " (80/10/10 split)" << std::endl;
+    std::cout << "Data Shapes (windows never cross flight boundaries)" << std::endl;
+    std::cout << "X_train: " << X_train.sizes() << "  y_train: " << y_train.sizes() << std::endl;
+    std::cout << "X_val:   " << X_val.sizes() << "  y_val:   " << y_val.sizes() << std::endl;
+    std::cout << "X_test:  " << X_test.sizes() << "  y_test:  " << y_test.sizes() << std::endl;
+    std::cout << "Train: " << numTrain << " | Val: " << numVal << " | Test: " << numTest
+              << " (flight-based split, no data leakage)" << std::endl;
     std::cout << std::endl;
 
     // Model Creation
